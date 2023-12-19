@@ -1,0 +1,418 @@
+---
+title: "p1_04_mdmr_path_surv"
+author: "fk506cni"
+date: "2023-10-21"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# from p1_04_mdmr_path_surv
+```{r}
+require(tidyverse)
+require(data.table)
+require(lubridate)
+require(IRdisplay)
+require(openxlsx)
+require(R.utils)
+```
+
+
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+ts
+```
+
+```{r}
+read_from_tag <- function(ddir, tag=NULL){
+    if(is.null(tag)){
+        tags <- list.files(ddir, pattern = "csv.bz2") %>%
+            str_extract("^[a-z]*")
+        return(tags)
+    }else{
+        fs <- list.files(ddir, pattern = "csv.bz2", full.names = T) %>%
+            .[str_detect(., tag)]
+        if( length(fs) == 0){
+            return(NULL)
+        }else{
+            for(f in fs){
+                print(f)
+                numcol <- f %>%
+                    str_extract("col[0-9]*") %>% 
+                    str_remove("col") %>% 
+                    as.integer()
+                print(numcol)
+                df <- fread(f, colClasses = rep("character", numcol))
+            }
+            return(df)
+        }
+    }
+}
+
+ddir <- "../../dat/p1_mcp2dwh/"
+read_from_tag(ddir = ddir )
+```
+
+# from path rep
+```{r}
+df_pth  <- read_from_tag(ddir, "pthrp")
+```
+
+```{r}
+df_rasraf <- df_pth %>%
+    mutate(DIAGNOSIS = stringi::stri_trans_nfkc(DIAGNOSIS) %>%
+        tolower() %>%
+        str_replace_all("<br/>", "\n")) %>%
+    filter(str_detect(DIAGNOSIS, "ras|raf")) %>%
+    dplyr::select(PT_ID, REPORT_DATE,DIAGNOSIS ) %>%
+    separate_rows(DIAGNOSIS,  sep = "\n|。", convert = FALSE) %>%
+    filter(str_detect(DIAGNOSIS, "ras|raf")) %>%
+    mutate(DIAGNOSIS = DIAGNOSIS  %>%
+        str_replace_all("コドン", "codon") %>%
+        str_replace_all("陰性", "(-)")) %>%
+    group_by(PT_ID, REPORT_DATE) %>%
+    mutate(whole_snt = str_c(DIAGNOSIS, sep="\n", collapse = "\n"))
+```
+
+```{r}
+tagx <- c(
+" braf v600e",
+" nras g12d",
+" kras g12a",
+" kras g12d",
+" kras g12s",
+" kras g12v",
+" kras g13c",
+" kras g13d",
+" kras q61h, q61h",
+" kras a146t",
+" braf exoc4-braf fusion",
+"kras codon12 g12a",
+"kras codon12 g12d"
+)
+df_check <- df_rasraf %>%
+    filter(DIAGNOSIS %in% tagx) %>%
+    left_join(df_pth, by=c("PT_ID", "REPORT_DATE"))
+# df_check 
+```
+
+
+```{r}
+tagx <- c(
+" braf v600e",
+" nras g12d",
+" kras g12a",
+" kras g12d",
+" kras g12s",
+" kras g12v",
+" kras g13c",
+" kras g13d",
+" kras q61h, q61h",
+" kras a146t",
+" braf exoc4-braf fusion",
+"kras codon12 g12a",
+"kras codon12 g12d"
+)
+df_check <- df_rasraf %>%
+    filter(DIAGNOSIS %in% tagx) %>%
+    left_join(df_pth, by=c("PT_ID", "REPORT_DATE"))
+# df_check 
+```
+
+```{r}
+df_rasraf_smr <- df_rasraf%>%
+    group_by(DIAGNOSIS) %>%
+    summarize(n=n()) %>%
+    mutate(is_detect = str_detect(DIAGNOSIS, "陽性|positive|cytoplasmic overexpression") | DIAGNOSIS %in% tagx) %>%
+    mutate(is_kras = str_detect(DIAGNOSIS, "kras"),
+           is_nras = str_detect(DIAGNOSIS, "nras"),
+           is_braf = str_detect(DIAGNOSIS, "braf"),
+           is_doubt = str_detect(DIAGNOSIS, "疑陽性|equivocal|陽性所見は認めません")) %>%
+    arrange(is_doubt, is_kras, is_nras, is_doubt) 
+```
+
+
+```{r}
+df_rasraf <- df_rasraf %>%
+        mutate(is_detect = str_detect(DIAGNOSIS, "陽性|positive|cytoplasmic overexpression") | DIAGNOSIS %in% tagx) %>%
+    mutate(is_kras = str_detect(DIAGNOSIS, "kras"),
+           is_nras = str_detect(DIAGNOSIS, "nras"),
+           is_braf = str_detect(DIAGNOSIS, "braf"),
+           is_doubt = str_detect(DIAGNOSIS, "疑陽性|equivocal|陽性所見は認めません")) %>%
+    arrange(is_doubt, is_kras, is_nras, is_doubt) 
+```
+
+```{r}
+write.xlsx(df_rasraf_smr, "./df_rasraf.xlsx")
+```
+
+
+```{r}
+f <- "../../dat/p1_mcp2dwh/df_ex_pts_20231129_040508.rds"
+df <- readRDS(f)
+
+f_innaigan_smr_rds <- "../../dat/p1_mcp2dwh/df_innnaigan_smr_20231129_040508.rds"
+df_innaigan_smr <- readRDS(f_innaigan_smr_rds)
+```
+
+```{r}
+df_in <- df %>%
+    filter(PT_ID != "00000090") %>%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID) %>%
+    filter(had_ex_cancer_1st_fill == 0) %>%
+    filter(had_ex_adenocarci_fill == 0) %>%
+    filter(had_unknown_cstage_1stcrc_fill == 0) %>%
+    filter(without_3mkr == 0) %>%
+    filter(with_hd_prestart == 0) %>%
+    filter(have_pre_ex_prs == 0) %>%
+    filter(have_pre_ex_inj == 0) %>%
+    dplyr::select(PT_ID, dt_start) 
+```
+
+```{r}
+df_rasraf_in <- df_rasraf%>%
+    left_join(df_in, by="PT_ID") %>%
+    filter(!is.na(dt_start)) %>%
+    filter(!is_doubt) %>%
+    filter(is_detect) %>%
+    mutate(REPORT_DATE = lubridate::ymd(REPORT_DATE),
+           is_past_report = REPORT_DATE - dt_start <= 0) 
+```
+
+```{r}
+df_rasraf_tabl <- df_rasraf_in %>%
+    ungroup() %>%
+    dplyr::select(PT_ID, is_braf, is_kras, is_nras) %>%
+    group_by(PT_ID) %>%
+    summarise(
+        # n=n(),
+              kras_mutation = sum(is_kras),
+              nras_mutation = sum(is_nras),
+              braf_mutation = sum(is_braf))
+```
+
+```{r}
+df_biom <- df %>%
+    left_join(df_rasraf_tabl, by= "PT_ID")
+```
+
+```{r}
+df_ptprof <- read_from_tag(ddir, 'ptprof') %>%
+    dplyr::select(PT_ID,DEATH_DATE,DEATH_FLG) %>%
+    mutate(DEATH_DATE = lubridate::ymd(DEATH_DATE))
+
+pt_dead <- df_ptprof %>%
+    filter(DEATH_FLG == "＋") %>%
+    .[["PT_ID"]]
+
+pt_dead %>%
+    length()
+```
+
+```{r}
+df_mrdr <- read_from_tag(ddir, 'mrdr')
+
+df_mrdr_fl <- df_mrdr %>%
+    filter(str_detect(EMR_TEXT, "R3856")) %>%
+    filter(!PT_ID %in% pt_dead)
+```
+
+```{r}
+df_mrdr_follow <- df_mrdr_fl %>%
+    mutate(lastfollow = str_extract(EMR_TEXT, "20[0-9]*/[0-9]*/[0-9]*") %>%
+        lubridate::ymd()) %>%
+    dplyr::select(PT_ID, lastfollow)
+```
+
+```{r}
+df_mrdr_follow %>%
+    filter(is.na(lastfollow))
+```
+
+```{r}
+df_biom_follow <- df_biom %>%
+    left_join(df_ptprof, by ="PT_ID") %>%
+    left_join(df_mrdr_follow, by="PT_ID")
+```
+
+```{r}
+df_mrdr_rr_org <-  df_mrdr  %>%
+    mutate(EMR_TEXT = stringi::stri_trans_nfkc(EMR_TEXT) %>%
+    tolower() %>%
+    str_replace_all("<br/>", "\n")) %>%
+    filter(str_detect(EMR_TEXT, "ras|raf")) %>%
+    dplyr::select(KEY01, PT_ID, RECORD_DATE, EMR_TEXT) %>%
+    separate_rows(EMR_TEXT,  sep = "\n|。", convert = FALSE) %>%
+    filter(str_detect(EMR_TEXT, "ras|raf"))
+```
+
+```{r}
+get_index <- function(x){
+    return(1:length(x))
+}
+
+get_ele <- function(l, i){
+    return (l[[i]])
+}
+
+get_ele_v <- Vectorize(FUN = get_ele, vectorize.args = c("l", "i"))
+```
+
+```{r}
+## raf ras
+extratag <- "ras.{1,15}|raf.{1,15}"
+excltag <- c(
+    " wt",
+    "wild",
+    ":陰性",
+    "未",
+    " status → 変異なし",
+    " v600e\tn.a.",
+    "変異無し"
+)
+df_mrdr_rr <-  df_mrdr_rr_org %>%
+    mutate(s_ind = get_index(KEY01)) %>%
+    mutate(org_text = EMR_TEXT) %>%
+    group_by(KEY01,s_ind) %>%
+    separate_rows(EMR_TEXT,  sep = "ras|raf|ugt|egfr|msi|tmb", convert = FALSE) %>%
+    mutate(k_ind = get_index(KEY01),
+           tag_vec = str_c("top", org_text, sep="") %>%
+                str_extract_all(., "top|ras|raf|ugt|egfr|msi|tmb")
+                ) %>%
+    mutate(tag_str = get_ele_v(tag_vec, k_ind)) %>%
+    filter(!tag_str %in% c("top","ugt","egfr","msi", "tmb")) %>%
+    filter(!EMR_TEXT %in% excltag) %>%
+    filter(!str_detect(EMR_TEXT, "wt|wild|未|陰性|(-)|mtならば|野生型|変異の有無|変異について|変異なし|negative|検出せず|検出なし|no overexpression|陽性所見は認めません|認めず|の変異|変異無し|なし|検索中")) %>%
+    filter(!str_detect(EMR_TEXT, "変異あれ|変異[がはものおなにおやけ依及確検解評追測報]|変異型なら|検査|オーダー|依頼|提出|判明|結果")) %>%
+    mutate(is_desc_biom = str_detect(EMR_TEXT, "mt|mut|g12|a146t|v600|変異|g13|陽性|q61|g14d|positive|gly12|q22|n581|d594|r684|\\(+\\)"))
+```
+
+```{r}
+df_mrdr_rr_smr <- df_mrdr_rr %>%
+    ungroup() %>%
+    group_by(PT_ID, tag_str) %>%
+    summarize(detection=sum(is_desc_biom)
+              )   %>%
+    tidyr::pivot_wider(names_from = tag_str, values_from = detection) %>%
+    mutate(have_ras_mutation_desc_mr = if_else(ras > 0, 1, 0),
+           have_raf_mutation_desc_mr = if_else(raf > 0, 1, 0))
+
+df_mrdr_rr_smr %>%
+    .[["PT_ID"]] %>%
+    duplicated() %>%
+    sum()
+```
+
+```{r}
+df_mrdr_rr %>%
+    ungroup() %>%
+    group_by(EMR_TEXT, is_desc_biom, tag_str) %>%
+    summarize(n=n()) %>%
+    write.xlsx("mrdr_biom.xlsx")
+```
+
+```{r}
+df_biom_follow_mr <- df_biom_follow %>%
+    left_join(df_mrdr_rr_smr, by="PT_ID") %>%
+    mutate(kras_mutation = if_else(is.na(kras_mutation),0, as.numeric(kras_mutation)),
+           nras_mutation = if_else(is.na(nras_mutation),0, as.numeric(nras_mutation)),
+           braf_mutation = if_else(is.na(braf_mutation),0, as.numeric(braf_mutation)),
+           have_ras_mutation_desc_mr = if_else(is.na(have_ras_mutation_desc_mr),0, have_ras_mutation_desc_mr),
+           have_raf_mutation_desc_mr = if_else(is.na(have_raf_mutation_desc_mr),0, have_raf_mutation_desc_mr),)
+```
+
+```{r}
+df_biom_follow_mr <- df_biom_follow_mr %>%
+    mutate(cStage_fix = cStage %>%
+               str_remove("[0-9]*：") %>%
+               str_remove("[ABC1]*$"),
+           cT_categ_fix = cT_categ %>%
+               str_remove("[0-9]*：") %>%
+               str_remove("[abc]*$") %>%
+               str_replace("不明", "TX"),
+           cN_categ_fix = cN_categ %>%
+               str_remove("[0-9]*：") %>%
+               str_remove("[abc]*$") %>%
+               str_replace("不明", "NX"),
+           cM_categ_fix = cM_categ %>%
+               str_remove("[0-9]*：") %>%
+               str_remove("[abc]*$") %>%
+               str_replace("不明", "MX"),
+           diffgrade_fix = case_when(
+               str_detect(diffgrade, "高分化") ~ "well",
+               str_detect(diffgrade, "中分化") ~ "moderate",
+               str_detect(diffgrade, "低分化") ~ "poor",
+               str_detect(diffgrade, "9：") ~ "NA",
+                T ~ "other") %>%
+           factor(., levels = c("well", "moderate", "poor", "NA")),
+           position_fix = case_when(
+               str_detect(position, "_") ~ "multiple",
+               str_detect(position, "180|181|182|183") ~ "right_side",
+               str_detect(position, "184") ~ "transverse",
+               str_detect(position, "185|186|187") ~ "left_side",
+               str_detect(position, "199|209") ~ "rectum",
+               T ~ "other"
+           ) %>% factor(., levels = c("right_side", "transverse", "left_side", "rectum", "multiple", "other")),
+           CEA_count = CEA,
+           CA19_9_count = `CA19-9`,
+           kras_mutation = if_else(kras_mutation == 1, "detected", "not_detected"),
+           nras_mutation = if_else(nras_mutation == 1, "detected", "not_detected"),
+           braf_mutation = if_else(braf_mutation == 1, "detected", "not_detected"),
+           have_ras_mutation_desc_mr = if_else(have_ras_mutation_desc_mr == 1, "descripted", "not_descripted"),
+           have_raf_mutation_desc_mr = if_else(have_raf_mutation_desc_mr == 1, "descripted", "not_descripted")
+    ) %>% 
+    mutate(lastfollow = if_else(ex_index == 669, lubridate::ymd("2017-11-22"), lastfollow)) %>%
+    mutate(event = if_else(DEATH_FLG == '＋', 1, 0),
+           lastfollow_fill = if_else(is.na(lastfollow), lubridate::ymd("1980-1-1"), lastfollow),
+           DEATH_DATE_fill = if_else(is.na(DEATH_DATE), lubridate::ymd("1980-1-1"), DEATH_DATE),
+           dt_start_fill = if_else(is.na(dt_start), lubridate::ymd("1980-1-1"), dt_start),
+           lasttime = pmax(lastfollow_fill, DEATH_DATE_fill),
+           time_dt = lasttime - dt_start_fill,
+           time_y = time_dt %>%
+        as.numeric(units = "days")/365.25) %>%
+    mutate(cStage_fix = ifelse(ex_index == 418, "IV", cStage_fix)) %>%
+    mutate(cStage_fix = ifelse(ex_index == 10, "II", cStage_fix))
+```
+
+```{r}
+df_biom_follow_mr %>%
+        filter(PT_ID != "00000090") %>%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID) %>%
+    filter(had_ex_cancer_1st_fill == 0) %>%
+    filter(had_ex_adenocarci_fill == 0) %>%
+    filter(had_unknown_cstage_1stcrc_fill == 0) %>%
+    filter(without_3mkr == 0) %>%
+    filter(with_hd_prestart == 0) %>%
+    filter(have_pre_ex_prs == 0) %>%
+    filter(have_pre_ex_inj == 0) %>%
+    dim()
+```
+
+
+```{r}
+ts
+
+f <- "../../dat/p1_mcp2dwh/df_ex_pts_tsxx.xlsx"
+f <- f %>%
+    str_replace("tsxx", ts)
+f2 <- f %>%
+    str_replace(".xlsx", "_with_biomfollow_mr.rds")
+
+saveRDS(df_biom_follow_mr, f2)
+write.xlsx(df_biom_follow_mr, f)
+```
+
+```{r}
+f2
+f
+```
+
+
+```{r}
+sessionInfo()
+```
+
+

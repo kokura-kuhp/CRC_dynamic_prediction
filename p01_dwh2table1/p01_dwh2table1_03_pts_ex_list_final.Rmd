@@ -1,0 +1,761 @@
+---
+title: "p01_dwh2table1"
+author: "fk506cni"
+date: "2023-10-17"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# install package
+```{r}
+require(tidyverse)
+require(data.table)
+require(lubridate)
+require(openxlsx)
+require(R.utils)
+require(stringi)
+```
+
+# definition; read_from_tag
+```{r}
+read_from_tag <- function(ddir, tag=NULL){
+    if(is.null(tag)){
+        tags <- list.files(ddir, pattern = "csv.bz2") %>%
+            str_extract("^[a-z]*")
+        return(tags)
+    }else{
+        fs <- list.files(ddir, pattern = "csv.bz2", full.names = T) %>%
+            .[str_detect(., tag)]
+        if( length(fs) == 0){
+            return(NULL)
+        }else{
+            for(f in fs){
+                print(f)
+                numcol <- f %>%
+                    str_extract("col[0-9]*") %>% 
+                    str_remove("col") %>% 
+                    as.integer()
+                print(numcol)
+                df <- fread(f ,colClasses = rep("character", numcol))
+                # display(t(head(df)))
+            }
+            return(df)
+        }
+    }
+}
+```
+
+# time stamp
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+ts
+```
+
+```{r}
+d_out = "../../dat/p1_mcp2dwh/"
+```
+
+# hospital-based cancer registry
+```{r}
+d_iji <- "../../dat/p0_innaigan/院内癌登録_20230222"
+fs1 <- list.files(d_iji, pattern = "xlsx", full.names = T) %>% 
+     .[str_detect(.,"対象患者")] 
+fs1 %>%
+    print()
+fs2 <- list.files(d_iji, pattern = "xlsx", full.names = T) %>% 
+    .[str_detect(.,"コード")]
+
+fs2 %>%
+    print()
+```
+
+```{r}
+df_code <- read.xlsx(fs2[1]) %>% 
+    rename("code" = "部位コード") %>% 
+    rename("text1" = "部位テキスト.★2") %>% 
+    rename("text2" = "部位コードの見出し語.（≒部位テキスト）")
+
+# 部位コードinclusion
+df_code_inclusion <- df_code %>% 
+    group_by(code) %>% 
+    summarize(n = n()) %>% 
+    dplyr::select(code)
+df_code_inclusion %>%
+    t()
+
+code_inclusion <- df_code_inclusion %>%
+    unlist() %>%
+    as.vector()
+code_inclusion
+```
+
+```{r}
+print(fs2[2])
+df_code2 <- read.xlsx(fs2[2]) %>% 
+    rename("code" = "部位コード") %>% 
+    rename("text1" = "部位テキスト.★2") %>% 
+    rename("text2" = "部位コードの見出し語.（≒部位テキスト）")
+
+df_code_exclusion <- df_code2 %>% 
+    group_by(code) %>% 
+    summarize(n = n()) %>% 
+    dplyr::select(code)
+
+df_code_exclusion %>%
+    t()
+```
+
+# read data
+```{r}
+ddir <- "../../dat/p1_mcp2dwh/"
+read_from_tag(ddir = ddir )
+```
+
+```{r}
+df_pts <- read_from_tag(ddir = ddir, tag = "ptbase") %>% 
+  mutate(ex_index = 1:nrow(.))
+df_pts %>%
+    dim()
+```
+
+```{r}
+df_innaigan_org <- read.xlsx(fs1, startRow =　5) 
+df_innaigan <- df_innaigan_org %>%
+    rename("code" = "部位コード") %>% 
+    mutate(is_crc = code %in% code_inclusion) %>%
+    rename("PT_ID" = "患者ＩＤ番号") %>% 
+    rename("date" = "起算日") %>% 
+    rename("date_last_alive" = "生存最終確認日") %>% 
+    rename("date_death" = "死亡日")  %>%
+    rename_all(funs(
+        str_replace(., ".★", "_") %>%
+        str_replace("外科的治療", "stx_") %>%
+        str_replace("鏡視下治療", "lsx_") %>%
+        str_replace("内視鏡的治療", "esx_") %>%
+        str_replace("内分泌療法", "ecx_") %>%
+        str_replace("放射線療法", "rtx_") %>%
+        str_replace("化学療法", "ctx_") %>%
+        str_replace("開始日", "start_") %>%
+        str_replace("（自施設）","kuhp_") %>%
+        str_replace("他施設）","out_") %>%
+        str_replace("（前・", "pre_") %>%
+        str_replace("（後・", "post_") %>%
+        str_replace("分類", "_categ")  %>%
+        str_replace("付加因子", "_modifier")  %>%
+        str_replace("組織型", "histtype_")  %>%
+        str_replace("コード", "code_")  %>%
+        str_replace("の見出し語.（≒組織型テキスト）", "index_text_") %>%
+        str_replace("テキスト", "text_") %>%
+        str_replace("性別", "gender") %>%
+        str_replace("生年月日", "birthday") %>%
+        str_replace("年齢", "age_at_start") %>%
+        str_replace("臨床病期", "cStage") %>%
+        str_replace("分化度", "diffgrade") %>%
+        stri_trans_nfkc()
+        )) %>%
+    mutate(out_tx = dplyr::select(., contains("out_")) %>%
+           mutate(
+           across(everything(), ~replace_na(.x, ""))) %>%
+           apply(., MARGIN = 1, FUN = function(x){str_c(x, sep = "_", collapse = "_")})) %>%
+    mutate(PT_ID = sprintf("%08d", PT_ID)) %>% 
+    mutate(date_last_alive = if_else(date_last_alive == "7777/77/77", NA_character_, date_last_alive) %>%
+            as.numeric() %>%
+            as_date(., origin="1899-12-30"),
+          date_death = if_else(date_death == "7777/77/77", NA_character_, date_death) %>%
+            as.numeric() %>%
+            as_date(., origin="1899-12-30"),
+          date = if_else(date %in% c("7777/77/77"), NA_character_, as.character(date)) %>%
+            as.numeric() %>%
+            as_date(., origin="1899-12-30")
+          )  %>%
+    group_by(PT_ID) %>%
+    mutate(date_rank = rank(date, ties.method = "min"),
+           n_tumor = n()) %>%
+    mutate(had_out_tx_crc = str_detect(out_tx, "あり") & is_crc) %>%
+    mutate(had_ex_cancer_1st = date_rank ==1 & is_crc != T) %>%
+    mutate(unknown_cstage = str_detect(cStage, "4999|7777")) %>%
+    mutate(is_adenocarci = histtype_code_ %in% c(82113, 81403) & str_detect(histtype_code_index_text_,"腺癌"),
+           is_not_adenocarci_1stcrc = !is_adenocarci & date_rank==1 & is_crc,
+           is_unknown_cstage_1stcrc = unknown_cstage & date_rank==1 & is_crc) %>%
+# cStage related
+    mutate(cStage_num = cStage %>%
+           str_replace("4999", "0009") %>%
+           str_replace("7777", "0007") %>%
+            str_sub(1,4) %>%
+            as.numeric()) %>%
+    arrange(cStage_num) %>%
+    mutate(cStage_fac = factor(cStage, levels = unique(cStage) )) %>%
+# cT related
+    mutate(cT_categ_num = cT_categ %>%
+            str_replace("7777|1500|1999", "0000") %>%
+            str_sub(1,4) %>%
+            as.numeric()) %>%
+    arrange(cT_categ_num) %>%
+    mutate(cT_categ_fac = factor(cT_categ, levels = unique(cT_categ))) %>%
+# Diff Grade related
+    mutate(diffgrade_num = diffgrade %>%
+            str_replace("9：未決定、未記載、適用外", "0：未決定、未記載、適用外") %>%
+            str_extract("^[0-9]*") %>%
+            as.numeric()) %>%
+    arrange(diffgrade_num) %>%
+    mutate(diffgrade_fac = factor(diffgrade, levels = unique(diffgrade))) %>%
+    dplyr::select(one_of(colnames(.) %>%
+        .[str_detect(., "^[a-zA-Z].")] %>%
+        sort()),
+           everything())
+```
+
+```{r}
+df_innaigan$cT_categ_fac %>%
+    unique()
+```
+
+
+```{r}
+df_innaigan$diffgrade_fac %>%
+    unique()
+```
+
+```{r}
+df_innaigan %>%
+    colnames()
+```
+
+```{r}
+df_innaigan %>%
+    group_by(histtype_code_,histtype_code_index_text_,is_not_adenocarci_1stcrc) %>%
+    summarize(n=n()) %>%
+    arrange(-is_not_adenocarci_1stcrc, -n) %>%
+    DT::datatable()
+```
+
+```{r}
+df_innaigan_smr <- df_innaigan %>%
+    group_by(PT_ID) %>%
+    summarise(n_tumor=n(),
+              had_out_tx_crc = sum(had_out_tx_crc),
+              had_ex_cancer_1st = sum(had_ex_cancer_1st),
+              had_ex_adenocarci = sum(is_not_adenocarci_1stcrc),
+              had_unknown_cstage_1stcrc = sum(is_unknown_cstage_1stcrc),
+              dt_start = min(date))
+```
+
+```{r}
+df_innaigan_smr %>%
+    dim()
+```
+
+```{r}
+sort_and_bind <- function(v){
+    v %>%
+    sort() %>%
+    str_c(collapse = "_") %>%
+    return()
+}
+```
+
+# criterion from innnaigan(hospital-based cancer registry)
+```{r}
+df_innaigan_inc <- df_innaigan %>%
+    filter(is_adenocarci & is_crc & date_rank == 1) %>%
+    filter(!is_unknown_cstage_1stcrc) %>%
+    rename(dt_start = date) %>%
+    group_by(PT_ID) %>%
+    mutate(cStage_max = max(as.numeric(cStage_fac))) %>%
+    filter(as.numeric(cStage_fac) == cStage_max) %>%
+    mutate(cT_categ_max = max(as.numeric(cT_categ_fac))) %>%
+    filter(as.numeric(cT_categ_fac) == cT_categ_max) %>%
+    mutate(diffgrade_max = max(as.numeric(diffgrade_fac))) %>%
+    filter(as.numeric(diffgrade_fac) == diffgrade_max) %>%
+    mutate(n_t = n()) %>%
+    ungroup() %>%
+    group_by(PT_ID, cStage, cT_categ, cN_categ, cM_categ, diffgrade,age_at_start,gender) %>%
+    summarise(position = sort_and_bind(code))
+```
+
+```{r}
+df_innaigan_inc %>%
+    dplyr::select(PT_ID, everything()) %>%
+    group_by(PT_ID) %>%
+    mutate(n_t = n()) %>%
+    arrange(PT_ID) %>%
+    filter(n_t > 1) %>%
+    write.xlsx("../../dat/p0_innaigan/innnaigan_double_credits.xlsx")
+```
+
+```{r}
+df_innaigan_smr_with_det <- df_innaigan_smr %>%
+    left_join(df_innaigan_inc, by=c("PT_ID"))
+```
+
+```{r}
+df_pts_ing <- df_pts %>%
+    left_join(df_innaigan_smr_with_det, by="PT_ID")
+```
+
+
+```{r}
+df_pts_ing_sub <- df_pts_ing %>%
+    dplyr::select(PT_ID, dt_start)
+```
+
+# criterion from marker count
+```{r}
+df_lab_org <- read_from_tag(ddir = ddir, tag = "lab")
+```
+
+```{r}
+df_lab_org %>%
+  filter(str_detect(EXAM_ITEM, "CEA|CA19-9")) %>%
+  group_by(EXAM_ITEM, EXAM_MAT,CANCEL_TYPE) %>%
+  summarize(n=n()) %>% 
+  DT::datatable()
+```
+
+# define the range including lab data count.
+```{r}
+df_ptprof_dead <- read_from_tag(ddir, 'ptprof') %>%
+  mutate(DEATH_DATE = lubridate::ymd(DEATH_DATE)) %>% 
+  dplyr::select(PT_ID, DEATH_DATE)
+
+
+pt_dead <- read_from_tag(ddir, 'ptprof') %>%
+    filter(DEATH_FLG == "＋") %>%
+    .[["PT_ID"]]
+
+pt_dead %>%
+    length()
+
+df_mrdr <- read_from_tag(ddir, 'mrdr')
+
+df_mrdr_fl <- df_mrdr %>%
+    filter(str_detect(EMR_TEXT, "R3856")) %>%
+    filter(!PT_ID %in% pt_dead) %>% 
+    mutate(lastfollow = str_extract(EMR_TEXT, "20[0-9]*/[0-9]*/[0-9]*") %>%
+        lubridate::ymd()) %>%
+    dplyr::select(PT_ID, lastfollow)
+
+df_exind <- df_pts %>% 
+  dplyr::select(PT_ID, ex_index)
+```
+
+
+A patient(ex_index == 669) is delayed follow date input.  
+so described here
+
+```{r}
+df_lab <- df_lab_org %>%
+    filter(EXAM_MAT =="血液") %>%
+    filter(EXAM_ITEM %in% c("CA19-9", "CEA")) %>%
+    dplyr::select(-KEY01) %>%
+    distinct()  %>%
+    left_join(df_pts_ing_sub, by="PT_ID") %>%
+    filter(!is.na(dt_start)) %>%
+    mutate(SAMPLING_TIME = if_else(SAMPLING_TIME=="", "00:00:00", SAMPLING_TIME),
+           dt_test = str_c(SAMPLING_DATE,SAMPLING_TIME, sep=" ") %>%
+        lubridate::ymd_hms(),
+           dt_start = lubridate::as_datetime(dt_start),
+           dt_start_m1m = dt_start - months(1)) %>%
+    mutate(sub_dt = dt_test - dt_start) %>%
+    filter(sub_dt > 0)  %>%
+    # here filtering by follow date
+    left_join(df_ptprof_dead, by ="PT_ID") %>%
+    left_join(df_mrdr_fl, by="PT_ID")  %>% 
+    left_join(df_exind, by="PT_ID") %>% 
+    mutate(fltime_in_lab = case_when(
+      !is.na(DEATH_DATE) ~ DEATH_DATE,
+      !is.na(lastfollow) ~ lastfollow,
+      ex_index == 669 ~ lubridate::ymd("2017/11/22"),
+      T ~ lubridate::ymd("19800101")
+    )) %>% 
+    filter(dt_test <= fltime_in_lab ) %>%
+    dplyr::select(-DEATH_DATE, -lastfollow, -ex_index) %>% 
+    group_by(PT_ID, EXAM_ITEM) %>%
+    summarize(item_n=n())  %>%
+    ungroup() %>%
+    tidyr::complete(PT_ID, EXAM_ITEM,fill = list(item_n=0))  %>%
+    pivot_wider(names_from = EXAM_ITEM, values_from = item_n) %>%
+    mutate(have_3mkr = CEA >= 3) 
+```
+
+
+```{r}
+df_pts_ing_lab <- df_pts_ing %>%
+    left_join(df_lab, by="PT_ID") %>%
+    mutate(have_3mkr = if_else(is.na(have_3mkr), F, have_3mkr),
+           without_3mkr = if_else(have_3mkr, 0, 1))
+```
+
+# criterion from ijikaikei(receipt): HD
+```{r}
+d_iji <- "../../dat/p0_ijikaikei_dat/"
+fs <- list.files(d_iji, pattern = "xlsx", full.names = T)  %>%
+    .[str_detect(.,"期間指定")]
+
+fs_new <- fs %>%
+    .[str_detect(., "201605-202301")]
+
+fs_old <- fs %>%
+    .[!str_detect(., "201605-202301")]
+```
+
+```{r}
+df_new <- data.frame()
+for (x in fs_new){
+    print(x)
+    df_x <- read.xlsx(x)
+    df_new <- rbind(df_new, df_x)
+}
+
+df_new <- df_new %>%
+    dplyr::select('DT_YMD', 'PT_ID', 'PT_NAME', 'FC_KCODE', 'VC_NAME')  %>%
+    mutate(date = as_date(DT_YMD, origin="1899-12-30"))
+```
+
+
+```{r}
+df_old <- data.frame()
+for (f in fs_old){
+    print(f)
+    df_i <- read.xlsx(f)
+    df_old <- rbind(df_old, df_i)
+}
+
+df_old <- df_old %>%
+    dplyr::select('TK01', 'PT_ID', 'PT_NAME', 'TK35', 'VC_NAME') %>%
+    rename(DT_YMD = TK01, FC_KCODE=TK35) %>%
+    mutate(date = lubridate::ymd(DT_YMD))
+
+df_si_whole <- bind_rows(df_new, df_old)
+```
+
+
+```{r}
+df_hd <- df_si_whole %>%
+    filter(str_detect(VC_NAME, "人工腎臓")) %>% 
+    filter(!str_detect(VC_NAME, "加算")) %>%
+    left_join(df_pts_ing_sub, by="PT_ID")  %>%
+    mutate(date_sub= date - dt_start) %>%
+    filter(date_sub <= 0) %>%
+    group_by(PT_ID) %>%
+    summarize(n_hd_prestart=n())
+```
+
+
+```{r}
+df_pts_ing_lab_hd <- df_pts_ing_lab %>%
+    left_join(df_hd, by="PT_ID") %>%
+    mutate(with_hd_prestart = if_else(!is.na(n_hd_prestart), 1, 0))
+```
+
+
+# criterion from injection drug
+```{r}
+f_drg_list <-  '../../dat/p7_inj_premix/df_injt_c.xlsx'
+
+df_drg_list <- read.xlsx(f_drg_list) %>%
+    filter(include==1)
+
+df_drg_list %>%
+    head()
+```
+
+```{r}
+df_inj_org <- read_from_tag(ddir, tag = "injt_")
+```
+
+
+```{r}
+df_inj_org %>%
+    group_by(PLAN_START_DATE) %>%
+    summarize(n=n()) %>%
+    arrange(-n) %>%
+    head()
+```
+
+```{r}
+df_inj <- df_inj_org %>%
+    filter(ANTI_CANCER_FLG != "－") %>%
+    mutate(yj7 = DRUG_PRICE_LIST_CD %>%
+        str_sub(1,7),
+           dt_inj_start = PLAN_START_DATE %>%
+        lubridate::ymd()) %>%
+    left_join(df_pts_ing_sub) %>%
+    mutate(sub_dt = dt_inj_start -dt_start ) %>%
+    filter(sub_dt <= 0)
+    
+df_inj %>%
+    group_by(INJ_DRUG) %>%
+    summarize(n=n()) %>%
+    arrange(-n)
+```
+
+```{r}
+df_inj_ex <- df_inj %>%
+    group_by(yj7, INJ_DRUG) %>%
+    summarize(n=n()) %>%
+    filter(!str_detect(INJ_DRUG, "エルプラット|ｱﾅﾍﾟｲﾝ|デキサート|レボホリナート|5-ＦＵ注"))
+```
+
+```{r}
+inj_ex <- df_inj_ex$yj7
+
+df_inj_ex_smr <- df_inj %>%
+    filter(yj7 %in% inj_ex) %>%
+    group_by(PT_ID) %>%
+    summarize(n_pre_ex_inj=n())
+```
+
+```{r}
+df_prs_org <- read_from_tag(ddir = ddir, tag = "prs_")
+```
+
+```{r}
+df_prs <- df_prs_org %>%
+    filter(ANTI_CANCER_FLG != "－") %>%
+    mutate(yj7 = DRUG_PRICE_LIST_CD %>%
+        str_sub(1,7),
+           dt_prs_start = TAKING_START_DATE %>%
+        lubridate::ymd()) %>%
+    left_join(df_pts_ing_sub) %>%
+    mutate(sub_dt = dt_prs_start -dt_start ) %>%
+    filter(sub_dt <= 0)
+```
+
+
+```{r}
+df_prs_ex <- df_prs %>%
+    group_by(yj7, DRUG) %>%
+    summarize(n=n()) %>%
+    filter(!str_detect(DRUG, "ｶﾍﾟｼﾀﾋﾞﾝ|ゼローダ|ユーエフティ|ﾃｨｰｴｽﾜﾝ|エスワンタイホウ|ﾕｰｴﾌﾃｨ|スチバーガ|ロンサーフ"))
+
+df_prs_ex %>% DT::datatable()
+```
+
+
+```{r}
+prs_ex <- df_prs_ex$yj7
+
+df_prs_ex_smr <- df_prs %>%
+    filter(yj7 %in% prs_ex) %>%
+    group_by(PT_ID) %>%
+    summarize(n_pre_ex_prs=n())
+```
+
+
+```{r}
+df_pts_ing_lab_hd_inj_prs <- df_pts_ing_lab_hd %>%
+    left_join(df_inj_ex_smr, by="PT_ID") %>%
+    left_join(df_prs_ex_smr, by="PT_ID") %>%
+    mutate(have_pre_ex_prs = if_else(!is.na(n_pre_ex_prs), 1, 0)) %>%
+    mutate(have_pre_ex_inj = if_else(!is.na(n_pre_ex_inj), 1, 0))
+```
+
+```{r}
+txt  <- "R3856
+集学的治療を要した大腸癌症例における縦断的データを用いた動的予後予測解析
+PT_ID:ptidtag
+経過調査
+院内癌登録大腸癌登録日:dtstart
+
+最終外来受診日
+20xx/xx/xx
+
+●を踏まえ
+電子カルテの死亡日を
+20xx/xx/xx
+で登録しました
+
+"
+
+df_pts_ing_lab_hd_inj_prs %>%
+    colnames
+```
+
+```{r}
+df_pts_ing_lab_hd_inj_prs_fill <- df_pts_ing_lab_hd_inj_prs %>%
+    mutate(had_out_tx_crc_fill = if_else(is.na(had_out_tx_crc), 1, as.numeric(had_out_tx_crc)),
+           had_ex_cancer_1st_fill = if_else(is.na(had_ex_cancer_1st), 1, as.numeric(had_ex_cancer_1st)),
+           had_ex_adenocarci_fill = if_else(is.na(had_ex_adenocarci), 1, as.numeric(had_ex_adenocarci)),
+           had_unknown_cstage_1stcrc_fill = if_else(is.na(had_unknown_cstage_1stcrc), 1, as.numeric(had_unknown_cstage_1stcrc))) %>%
+    mutate(ctxt = txt) %>%
+    mutate(messe = ctxt %>%
+    str_replace("ptidtag", PT_ID) %>%
+    str_replace("dtstart", as.character(dt_start))) %>%
+    dplyr::select(PT_ID,
+           ex_index,
+           had_out_tx_crc_fill,
+           had_ex_cancer_1st_fill,
+           had_ex_adenocarci_fill,
+           had_unknown_cstage_1stcrc_fill,
+           without_3mkr,
+           with_hd_prestart,
+           have_pre_ex_prs,
+           have_pre_ex_inj, messe,
+           dt_start,
+           cStage,
+           cT_categ,
+           cN_categ,
+           cM_categ,
+           diffgrade,
+           position,
+           `CA19-9`,
+           CEA,
+           age_at_start,
+           gender,
+           dt_start)
+```
+
+```{r}
+f_ex_pts <- c(d_out, "df_ex_pts_", ts, ".xlsx") %>%
+    str_c(collapse = "")
+
+f_ex_pts
+
+df_pts_ing_lab_hd_inj_prs_fill %>%
+    write.xlsx(x = ., file = f_ex_pts)
+
+f_ex_pts_rds <- f_ex_pts %>%
+    str_replace("xlsx", "rds")
+
+f_ex_pts_rds
+
+saveRDS(df_pts_ing_lab_hd_inj_prs_fill, f_ex_pts_rds)
+```
+
+```{r}
+f_innaigan_smr <- c(d_out, "df_innnaigan_smr_", ts, ".xlsx") %>%
+    str_c(collapse = "")
+
+f_innaigan_smr
+
+df_innaigan_smr %>%
+    write.xlsx(x = ., file = f_innaigan_smr)
+
+f_innaigan_smr_rds <- f_innaigan_smr %>%
+    str_replace("xlsx", "rds")
+f_innaigan_smr_rds
+
+saveRDS(df_innaigan_smr, f_innaigan_smr_rds)
+```
+
+```{r}
+df_pts_ing_lab_hd_inj_prs_fill %>%
+    group_by(had_ex_cancer_1st_fill,
+             had_ex_adenocarci_fill,
+             had_unknown_cstage_1stcrc_fill,
+           without_3mkr,
+           with_hd_prestart,
+           have_pre_ex_prs,
+           have_pre_ex_inj) %>%
+    summarise(n=n()) %>%
+    arrange(had_ex_adenocarci_fill)
+```
+
+
+```{r}
+df_pts_ing_lab_hd_inj_prs_fill %>%
+    group_by(had_out_tx_crc_fill,
+             had_ex_cancer_1st_fill,
+             had_ex_adenocarci_fill,
+             had_unknown_cstage_1stcrc_fill,
+           without_3mkr,
+           with_hd_prestart,
+           have_pre_ex_prs,
+           have_pre_ex_inj) %>%
+    summarise(n=n())
+```
+
+
+```{r}
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill
+
+#ex test pt
+print("ex test pt")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(PT_ID != "00000090")
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#ex without innnaigan
+print("ex without innnaigan")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#ex had_ex_cancer_1st
+print("ex had_ex_cancer_1st")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(had_ex_cancer_1st_fill == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+# have_pre_ex_prs
+print("ex have_pre_ex_prs")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(have_pre_ex_prs == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+# have_pre_ex_inj
+print("ex have_pre_ex_inj")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(have_pre_ex_inj == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#ex had_not_adenocarci
+print("ex had_not_adenocarci")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(had_ex_adenocarci_fill == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#had unknown cstage
+print("ex had unknown cstage")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(had_unknown_cstage_1stcrc_fill == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#without_3mkr
+print("ex without_3mkr")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(without_3mkr == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+
+#with_hd_prestart
+print("ex with_hd_prestart")
+df_pts_ing_lab_hd_inj_prs_fill_ex <- df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    filter(with_hd_prestart == 0)
+
+df_pts_ing_lab_hd_inj_prs_fill_ex %>%
+    nrow() %>%
+    print()
+```
+
+
+```{r}
+sessionInfo()
+```
+

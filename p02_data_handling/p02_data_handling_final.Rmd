@@ -1,0 +1,476 @@
+---
+title: "p02_data_handling"
+author: "okura"
+output: html_document
+date: "2023-10-25"
+editor_options: 
+  chunk_output_type: console
+---
+# install package
+```{r}
+require(tidyverse)
+require(data.table)
+require(lubridate)
+require(IRdisplay)
+require(survival)
+require(nlme)
+require(JM)
+require(openxlsx)
+require(officer)
+require(survivalROC)
+```
+
+# definition; zero_pad
+```{r}
+zero_pad <- function(x) {
+  sprintf("%08d", x)
+}
+```
+
+# definition; time stamp
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+```
+
+# read each file
+```{r}
+#df_lab
+f_lab <- '../../dat/p1_mcp2dwh/lab_col28_20230704_051454_386123.csv.bz2'
+df_lab <- fread(f_lab) %>% 
+    mutate(SAMPLING_DATE = as.Date(SAMPLING_DATE, origin = "1899-12-30"))
+
+#df_pts_somat
+f_pts_somat <- '../../dat/p1_mcp2dwh/df_pts_somat.rds'
+df_pts_somat <- readRDS(f_pts_somat) %>% 
+    mutate(in_date = as.Date(in_date, origin = "1899-12-30"))
+
+# df_pts
+f_pts <- '../../dat/p1_mcp2dwh/df_ex_pts_20231129_041815_with_biomfollow_mr.rds'
+df_pts <- readRDS(f_pts)  %>% 
+    dplyr::select(-CEA, -`CA19-9`) %>% 
+    mutate(gender = if_else(gender == "1：男", "1", "0"))
+    
+# df_injt
+f_injt <- '../../dat/p1_mcp2dwh/injt_col69_20230704_051454_386123.csv.bz2'
+df_injt <- fread(f_injt) %>% 
+    mutate(PLAN_START_DATE = as.Date(PLAN_START_DATE, origin = "1899-12-30"))
+
+# df_prs
+f_prs <- '../../dat/p1_mcp2dwh/prs_col73_20230704_051454_386123.csv.bz2'
+df_prs <- fread(f_prs) %>% 
+    mutate(TAKING_START_DATE = as.Date(TAKING_START_DATE, origin = "1899-12-30")) 
+
+# df_si
+f_si <- '../../dat/p8_si_premix/si_cumsum_20231129_043431.rds'
+df_si <- readRDS(f_si)
+```
+
+# modify table #1(df_lab)
+# df_marker
+```{r}
+cat_markers <- c("CA19-9", "CEA", "CA125")
+
+df_lab_marker <- df_lab %>% 
+    filter(EXAM_TYPE != "尿定性")%>% 
+    filter(EXAM_ITEM %in% cat_markers) %>% 
+    dplyr::select(PT_ID, SAMPLING_DATE, SAMPLING_TIME, EXAM_ITEM, RESULT_CHAR, RESULT_NUM, RESULT_UNIT) %>% 
+    rename(samp_date = SAMPLING_DATE) %>% 
+    rename(samp_time = SAMPLING_TIME) %>% 
+    rename(t_marker = EXAM_ITEM) %>% 
+    rename(res_char = RESULT_CHAR) %>% 
+    rename(res_num = RESULT_NUM) %>% 
+    rename(res_unit = RESULT_UNIT) %>% 
+    mutate(PT_ID = zero_pad(PT_ID)) %>% 
+    filter(res_char !="ｷｬﾝｾﾙ") %>% 
+    mutate(fix_char = res_char %>%
+        str_remove_all("[<>]*") %>%
+        as.character()) %>% 
+    mutate(fix_num = as.numeric(fix_char)) %>% 
+    dplyr::select(PT_ID, samp_date, samp_time, t_marker, fix_num)  %>% 
+    rename(num = fix_num) 
+
+df_marker <- df_lab_marker %>% 
+    arrange(PT_ID, samp_date) %>% 
+    group_by(PT_ID, samp_date, t_marker) %>% 
+    summarize(num = mean(num)) %>% 
+    pivot_wider(names_from = t_marker, values_from = num, values_fill = 0) 
+```
+
+# modify table #2(df_pts)
+# df_pts_sub2
+```{r}
+df_pts_sub <- df_pts %>% 
+    filter(had_ex_cancer_1st_fill == 0 ) %>% 
+    filter(had_ex_cancer_1st_fill == 0 ) %>% 
+    filter(had_ex_adenocarci_fill == 0 ) %>% 
+    filter(had_unknown_cstage_1stcrc_fill == 0 ) %>% 
+    filter(without_3mkr == 0 ) %>% 
+    filter(with_hd_prestart == 0 ) %>% 
+    filter(have_pre_ex_prs == 0 ) %>% 
+    filter(have_pre_ex_inj == 0 ) 
+
+df_pts_sub2 <- df_pts_sub %>% 
+        dplyr::select(-contains("have"), -contains("had"), -contains("with"), -messe, 
+                      -cStage, -cT_categ, -cN_categ, -cM_categ, -diffgrade)
+```
+
+
+# modify table #3(df_injt)
+# df_injt_colon
+```{r}
+df_injt_c <- df_injt %>% 
+    dplyr::filter(ANTI_CANCER_FLG == "＋") %>% 
+    dplyr::select(PT_ID, PLAN_START_DATE, DRUG_PRICE_LIST_CD, INJ_DRUG, EXEC_AMOUNT_DOSE, EXEC_UNIT) %>% 
+    rename(inj_date = PLAN_START_DATE) %>% 
+    rename(drug_no = DRUG_PRICE_LIST_CD) %>% 
+    rename(drug_name = INJ_DRUG) %>% 
+    rename(dose = EXEC_AMOUNT_DOSE) %>% 
+    rename(unit = EXEC_UNIT) %>% 
+    mutate(PT_ID = zero_pad(PT_ID)) 
+
+df_injt_name <- df_injt_c %>% 
+    ungroup() %>% 
+    group_by(drug_no, drug_name, unit) %>% 
+    summarise(n = n()) %>% 
+    arrange(-n)
+
+f_excel_out<- "./df_injt_c_tsxx.xlsx"
+# f_excel_out1 <- f_excel_out %>% 
+#   str_replace("tsxx", ts)
+# write.xlsx(x = df_injt_name,
+#            file = f_excel_out1, overwrite = T)
+```
+
+```{r}
+f_cancer_drug <- './df_injt_c_20231025_023956.xlsx'
+# selected drugs indicated for colorectal cancer
+
+df_cancer_drug<- read.xlsx(f_cancer_drug) %>% 
+    dplyr::select(drug_no, drug, include)
+
+df_injt_colon <- df_injt_c %>% 
+    left_join(df_cancer_drug, by = "drug_no", relationship = "many-to-many") %>% 
+    filter(include ==1)  %>% 
+    group_by(PT_ID, inj_date, drug) %>% 
+    arrange(inj_date) %>% 
+    mutate(dose_sum = sum(dose)) %>% 
+    dplyr::select(PT_ID, inj_date, drug, dose_sum, unit) %>% 
+    distinct() %>% 
+    mutate(drug = str_c("inj_", drug, sep = ""))
+```
+
+# modify table #4(df_prs)
+# df_prs_colon
+```{r}
+df_prs_c <- df_prs %>% 
+    filter(ANTI_CANCER_FLG == "＋") %>% 
+    dplyr::select(PT_ID, TAKING_START_DATE, ONEDAY_DOES, ONEDAY_UNIT, RP_DAYS, ORDER_AMOUNT_DOSE, DRUG_CD, DRUG) %>% 
+    rename(prs_dt = TAKING_START_DATE) %>% 
+    rename(day_dose = ONEDAY_DOES) %>% 
+    rename(day_unit = ONEDAY_UNIT) %>% 
+    rename(rp_days = RP_DAYS) %>% 
+    rename(order_num = ORDER_AMOUNT_DOSE) %>% 
+    rename(drug_cd = DRUG_CD) %>% 
+    rename(drug = DRUG) %>% 
+    mutate(PT_ID = zero_pad(PT_ID))  %>% 
+    ungroup()
+```
+
+# correct drugs with BSA(date of 1st date)
+## inj
+
+```{r}
+df_pts_somat_f <- df_pts_somat %>% 
+    dplyr::select(PT_ID, in_date, bsa_f, bsa_dub)
+
+#min_inj_date: 1st injection date in dataset
+df_injt_somat5 <- df_injt_colon %>% 
+    group_by(PT_ID) %>% 
+    arrange(PT_ID, inj_date) %>% 
+    mutate(min_inj_date = min(inj_date)) 
+
+#left join bsa data for each patient
+df_injt_somat6 <- df_injt_somat5 %>% 
+    left_join(df_pts_somat_f, by = "PT_ID", relationship = "many-to-many") %>% 
+    dplyr::select(PT_ID, inj_date ,min_inj_date, drug, dose_sum, unit, in_date, bsa_f, bsa_dub) 
+
+#choose 1st bsa before 1st administration
+df_injt_somat8 <- df_injt_somat6 %>% 
+    mutate(dif_date = difftime(min_inj_date, in_date, units = "days")) %>% 
+    filter(dif_date >= 0)   %>%
+    group_by(PT_ID, inj_date, drug) %>% 
+    mutate(rank_date = rank(dif_date)) %>% 
+    filter(rank_date ==1)
+
+#patient witout bsa: they were not included in analysis from another reason.
+df.na  <- df_injt_somat8 %>% 
+    filter(is.na(bsa_f)) %>% 
+    ungroup(drug, inj_date) %>% 
+    dplyr::select(PT_ID, min_inj_date, bsa_f) %>% 
+    distinct()
+
+# injection data with bsa
+df_injt_somat_last <- df_injt_somat8 %>% 
+    mutate(dose_bsa = dose_sum/bsa_f)
+```
+
+# calculate the total amount of drugs
+```{r}
+df_injt_accum <- df_injt_somat_last %>% 
+    group_by(PT_ID, drug)  %>% 
+    ungroup(inj_date) %>% 
+    arrange(PT_ID, drug, inj_date)  %>% 
+    mutate(accum_dose_bsa = cumsum(dose_bsa))
+
+df_injt_new  <- df_injt_accum %>% 
+    dplyr::select(PT_ID, inj_date, drug, dose_sum, accum_dose_bsa, unit) %>% 
+    ungroup()
+
+add_zero_rowi <- function(data){
+    data %>% 
+    add_row(inj_date = as.Date(0, origin = "1899-12-30"))
+}
+
+df_injt_sub <- df_injt_new %>% 
+    group_by(PT_ID, unit, drug) %>%
+    group_modify(~add_zero_rowi(.x))  %>% 
+    ungroup()  %>% 
+    mutate(dose_sum = if_else(is.na(dose_sum), 0, dose_sum)) %>%
+    mutate(accum_dose_bsa = if_else(is.na(accum_dose_bsa), 0, accum_dose_bsa)) 
+```
+
+# pivot_wider#1(tumor_marker+injt)
+# df_marker_injt_all
+```{r}
+df_marker_injt <- df_marker %>% 
+    left_join(df_injt_sub, by = "PT_ID", relationship = "many-to-many")  %>% 
+    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, inj_date, drug, accum_dose_bsa) %>%
+    mutate(inj_date = if_else(is.na(inj_date), as.Date(0, origin = "1899-12-30"), inj_date)) %>%
+    mutate(accum_dose_bsa = if_else(is.na(accum_dose_bsa), 0, accum_dose_bsa)) %>%
+    fill(drug, .direction="up") %>%
+    group_by(PT_ID, drug, samp_date) %>%
+    arrange(inj_date, samp_date) %>%
+    filter(inj_date < samp_date) %>%
+    slice_max(order_by = inj_date, n=1)
+
+df_marker_injt_all <- df_marker_injt %>% 
+    unique() %>% 
+    dplyr::select(-inj_date) %>% 
+    pivot_wider(names_from = drug, values_from = accum_dose_bsa, values_fill = 0) %>% 
+    dplyr::select(-"NA") %>%
+    ungroup() %>% 
+    group_by(PT_ID, samp_date) %>% 
+    arrange(PT_ID, samp_date) %>% 
+    mutate(inj_FU_LV = inj_5FU + inj_LV) %>% 
+    dplyr::select(-`inj_5FU`, -`inj_LV`)
+```
+
+# correct drugs with BSA(date of 1st date)
+## prs
+
+# pivot_wider#2(tumor_marker+prs)
+# df_marker_prs_all
+```{r}
+df_prs_c <- df_prs %>% 
+    filter(ANTI_CANCER_FLG == "＋") %>% 
+  filter(OVERTIME_HOLIDAY != "持参薬") %>% 
+    dplyr::select(PT_ID, TAKING_START_DATE, ONEDAY_DOES, ONEDAY_UNIT, RP_DAYS, ORDER_AMOUNT_DOSE, DRUG_CD, DRUG) %>% 
+    rename(prs_dt = TAKING_START_DATE) %>% 
+    rename(day_dose = ONEDAY_DOES) %>% 
+    rename(day_unit = ONEDAY_UNIT) %>% 
+    rename(rp_days = RP_DAYS) %>% 
+    rename(order_num = ORDER_AMOUNT_DOSE) %>% 
+    rename(drug_cd = DRUG_CD) %>% 
+    rename(drug = DRUG) %>% 
+    mutate(PT_ID = zero_pad(PT_ID))  %>% 
+    ungroup()
+
+df_prs_sub <- df_prs_c %>% 
+    arrange(PT_ID, prs_dt) %>% 
+    group_by(PT_ID) %>%
+    filter(prs_dt > "1980-01-01") %>% 
+    mutate(min_prs_dt = min(prs_dt))%>%
+    left_join(df_pts_somat_f, by = "PT_ID", relationship = "many-to-many") %>%
+    dplyr::select(PT_ID, prs_dt, order_num, drug, min_prs_dt, in_date, bsa_f, bsa_dub) %>%
+    ungroup() %>%
+    mutate(dif_date = difftime(min_prs_dt, in_date, units = "days")) %>%
+    filter(dif_date >= 0)%>%
+    group_by(PT_ID, prs_dt, drug) %>%
+    mutate(rank_date = rank(dif_date)) %>%
+    filter(rank_date ==1)
+
+df_prs_name <- df_prs_c %>% 
+    group_by(drug) %>% 
+    summarise(n = n()) %>% 
+    arrange(-n)
+
+f_excel_out2<- "./df_prs_tsxx.xlsx"
+# f_excel_out3 <- f_excel_out2 %>%
+#   str_replace("tsxx", ts)
+# write.xlsx(x = df_prs_name,
+#            file = f_excel_out3, overwrite = T)
+```
+
+```{r}
+f_cancer_prs <- './df_prs_20231025_040801.xlsx'
+# selected drugs indicated for colorectal cancer
+
+df_cancer_prs<- read.xlsx(f_cancer_prs) %>% 
+    dplyr::select(drug, drug_prs, per_dose, include)
+
+add_zero_rowp <- function(data){
+    data %>% 
+    add_row(prs_dt = as.Date(0, origin = "1899-12-30"))
+}
+
+# min_prs_date: 1st prs date in dataset
+# left join bsa data for each patients
+# chose 1st bsa before 1st administration.
+# prs data with bsa
+# accum adj dose
+
+df_prs_colon <- df_prs_sub %>% 
+    ungroup() %>% 
+    left_join(df_cancer_prs, by = "drug") %>%
+    filter(include == 1) %>%
+    dplyr::select(PT_ID, prs_dt, drug_prs, per_dose, order_num, bsa_f) %>%
+    mutate(order_dose = per_dose * order_num) %>%
+    mutate(order_dose_bsa = order_dose/bsa_f)%>%
+    arrange(PT_ID, prs_dt) %>%
+    group_by(PT_ID, drug_prs) %>%
+    mutate(accum_order_dose_bsa = cumsum(order_dose_bsa)) %>%
+    group_modify(~add_zero_rowp(.x))  %>%
+    mutate(accum_order_dose_bsa = if_else(is.na(accum_order_dose_bsa), 0, accum_order_dose_bsa)) %>%
+    arrange(PT_ID, prs_dt) %>%
+    group_by(PT_ID, drug_prs, prs_dt) %>%
+    # Here is due to prescription with different dose combination such as 10mg + 15mg tablets.
+    filter(accum_order_dose_bsa == max(accum_order_dose_bsa)) %>% 
+    mutate(drug_prs = str_c("prs_",drug_prs, sep=""))
+
+df_marker_prs <- df_marker %>% 
+    left_join(df_prs_colon, by = "PT_ID", relationship = "many-to-many")  %>% 
+    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, prs_dt, drug_prs, accum_order_dose_bsa) %>% 
+    mutate(prs_dt = if_else(is.na(prs_dt), as.Date(0, origin = "1899-12-30"), prs_dt)) %>%
+    mutate(accum_order_dose_bsa = if_else(is.na(accum_order_dose_bsa), 0, accum_order_dose_bsa)) %>%
+    fill(drug_prs, .direction="up") %>%
+    group_by(PT_ID, drug_prs, samp_date) %>%
+    arrange(prs_dt, samp_date) %>%
+    filter(prs_dt < samp_date) %>%
+    slice_max(order_by = prs_dt, n=1)
+
+df_marker_prs_all <- df_marker_prs %>%
+    unique() %>% 
+    dplyr::select(-prs_dt) %>% 
+    pivot_wider(names_from = drug_prs, values_from = accum_order_dose_bsa, values_fill = 0) %>% 
+    ungroup() %>% 
+    group_by(PT_ID, samp_date) %>% 
+    arrange(PT_ID, samp_date)
+```
+
+# pivot_wider#3(tumor_marker+si)
+# df_marker_si_all
+```{r}
+add_zero_rows <- function(data){
+    data %>% 
+    add_row(si_dt = as.Date(0, origin = "1899-12-30"))
+}
+
+# get accum times/days
+df_marker_si <- df_marker %>% 
+    left_join(df_si, by = "PT_ID", relationship = "many-to-many")  %>% 
+    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, date, colrec_sx, endo_tx, liv_sx, lng_sx, rtx) %>%
+    rename(si_dt = date) %>% 
+    ungroup() %>% 
+    group_by(PT_ID, samp_date, CEA, `CA19-9`, CA125) %>% 
+    group_modify(~add_zero_rows(.x))  %>% 
+    arrange(si_dt, samp_date) %>% 
+    filter(si_dt < samp_date) %>% 
+    slice_max(order_by = si_dt, n=1)
+
+df_marker_si_all <- df_marker_si %>%
+    dplyr::select(-si_dt) %>% 
+    mutate(colrec_sx = if_else(is.na(colrec_sx), 0, colrec_sx)) %>% 
+    mutate(endo_tx = if_else(is.na(endo_tx), 0, endo_tx)) %>% 
+    mutate(liv_sx = if_else(is.na(liv_sx), 0, liv_sx)) %>% 
+    mutate(lng_sx = if_else(is.na(lng_sx), 0, lng_sx)) %>% 
+    mutate(rtx = if_else(is.na(rtx), 0, rtx)) %>% 
+    rename(si_colrec_sx = colrec_sx) %>% 
+    rename(si_endo_tx = endo_tx) %>% 
+    rename(si_liv_sx = liv_sx) %>% 
+    rename(si_lng_sx = lng_sx) %>% 
+    rename(si_rtx = rtx) %>% 
+    ungroup() %>% 
+    group_by(PT_ID, samp_date) %>% 
+    arrange(PT_ID, samp_date)
+```
+
+# combine each dataframe
+```{r}
+df_all  <- cbind(df_marker_injt_all, df_marker_prs_all, df_marker_si_all)
+
+are_columns_equal <- function(column1, column2) {
+  return(identical(column1, column2))
+}
+
+#check df integrity.
+print(are_columns_equal(df_all$PT_ID...1, df_all$PT_ID...17))
+print(are_columns_equal(df_all$`samp_date...2`, df_all$samp_date...18))
+print(are_columns_equal(df_all$`CEA...3`, df_all$CEA...19))
+print(are_columns_equal(df_all$`CA19-9...4`, df_all$`CA19-9...20`))
+print(are_columns_equal(df_all$`CA125...5`, df_all$CA125...21))
+print(are_columns_equal(df_all$PT_ID...1, df_all$PT_ID...29))
+print(are_columns_equal(df_all$`samp_date...2`, df_all$samp_date...30))
+print(are_columns_equal(df_all$`CEA...3`, df_all$CEA...31))
+print(are_columns_equal(df_all$`CA19-9...4`, df_all$`CA19-9...32`))
+print(are_columns_equal(df_all$`CA125...5`, df_all$CA125...33))
+
+colnames(df_all)
+
+df_all2  <- df_all %>% 
+    dplyr::select(-`PT_ID...17`, -`samp_date...18`, -`CEA...19`, -`CA19-9...20`, -`CA125...21`, 
+                  -`PT_ID...29`, -`samp_date...30`, -`CEA...31`, -`CA19-9...32`, -`CA125...33`) %>% 
+    rename(PT_ID = `PT_ID...1`) %>% 
+    rename(samp_dt = `samp_date...2`) %>% 
+    rename(CEA = `CEA...3`) %>% 
+    rename(`CA19-9` = `CA19-9...4`) %>% 
+    rename(CA125 = `CA125...5`)
+```
+
+# df_cox → rds
+```{r}
+df_cox <- df_pts_sub2 %>% 
+    arrange(PT_ID)
+df_cox$id <- as.factor(1:nrow(df_cox))
+
+f_cox_rds <- c("../p03_modeling/df_cox_", ts, ".rds") %>%
+    str_c(collapse = "")
+
+f_cox_rds
+
+df_cox %>% saveRDS(f_cox_rds)
+```
+
+# df_mix → rds
+```{r}
+df_mix <- df_cox %>% 
+    left_join(df_all2, by = "PT_ID", relationship = "many-to-many") %>%
+    mutate(samp_dt = as.Date(samp_dt, origin="1899-12-30")) %>% 
+    mutate(year_samp_from_start = difftime(samp_dt, dt_start, units = "days")/365.25)  %>% 
+    mutate(year_samp_from_start = as.numeric(year_samp_from_start)) %>% 
+    filter(year_samp_from_start >=0) 
+    
+f_mix_rds <- c("../p03_modeling/df_mix_", ts, ".rds") %>%
+    str_c(collapse = "")
+
+f_mix_rds
+
+df_mix %>% saveRDS(f_mix_rds)
+```
+
+```{r}
+sessionInfo()
+```
+

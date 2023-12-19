@@ -1,0 +1,259 @@
+---
+title: "p02_data_handling_si"
+author: "fk506cni"
+date: "2023-11-03"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+require(tidyverse)
+require(data.table)
+require(lubridate)
+require(openxlsx)
+```
+
+
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+ts
+```
+
+```{r}
+read_from_tag <- function(ddir, tag=NULL){
+    if(is.null(tag)){
+        tags <- list.files(ddir, pattern = "csv.bz2") %>%
+            str_extract("^[a-z]*")
+        return(tags)
+    }else{
+        fs <- list.files(ddir, pattern = "csv.bz2", full.names = T) %>%
+            .[str_detect(., tag)]
+        if( length(fs) == 0){
+            return(NULL)
+        }else{
+            for(f in fs){
+                print(f)
+                numcol <- f %>%
+                    str_extract("col[0-9]*") %>% 
+                    str_remove("col") %>% 
+                    as.integer()
+                print(numcol)
+                df <- fread(f ,colClasses = rep("character", numcol))
+                # display(t(head(df)))
+            }
+            return(df)
+        }
+    }
+}
+```
+
+```{r}
+ddir <- "../../dat/p1_mcp2dwh/"
+read_from_tag(ddir = ddir )
+
+```
+
+```{r}
+d_iji <- "../../dat/p0_ijikaikei_dat/"
+fs <- list.files(d_iji, pattern = "xlsx", full.names = T)  %>%
+    .[str_detect(.,"期間指定")]
+fs
+```
+
+```{r}
+fs_new <- fs %>%
+    .[str_detect(., "201605-202301")]
+fs_new
+```
+
+```{r}
+fs_old <- fs %>%
+    .[!str_detect(., "201605-202301")]
+fs_old
+```
+
+```{r}
+df_new <- data.frame()
+for (f in fs_new){
+    print(f)
+    df_i <- read.xlsx(f)
+    df_new <- rbind(df_new, df_i)
+}
+
+df_new <- df_new %>%
+    dplyr::select('DT_YMD', 'PT_ID', 'PT_NAME', 'FC_KCODE', 'VC_NAME')  %>%
+    mutate(date = as.Date(DT_YMD, origin = "1899-12-30"))
+```
+
+```{r}
+df_old <- data.frame()
+for (f in fs_old){
+    print(f)
+    df_i <- read.xlsx(f)
+    df_old <- rbind(df_old, df_i)
+}
+```
+
+
+```{r}
+df_old <- df_old %>%
+    dplyr::select(one_of(c('TK01', 'PT_ID', 'PT_NAME', 'TK35', 'VC_NAME'))) %>%
+    rename(DT_YMD = TK01, FC_KCODE=TK35) %>%
+    mutate(date = lubridate::ymd(DT_YMD))
+
+df_whole <- bind_rows(df_new, df_old)
+```
+
+
+```{r}
+df_ope <- df_whole %>%
+ filter(!is.na(FC_KCODE)) %>% 
+        filter(str_detect(FC_KCODE, "^K")) %>% 
+    filter(!str_detect(FC_KCODE, "^K[0-49]."))
+
+df_whole_na_data <- df_whole %>% 
+  filter(is.na(date))
+```
+
+```{r}
+df_rad <-  df_whole %>%
+ filter(!is.na(FC_KCODE)) %>% 
+        filter(str_detect(FC_KCODE, "^M"))  %>% 
+    filter(!str_detect(VC_NAME, "加算")) %>% 
+    filter(!str_detect(VC_NAME, "管理料"))
+```
+
+```{r}
+df_ope_summary <- df_ope %>% 
+    group_by(FC_KCODE, VC_NAME) %>% 
+    summarize(n=n()) %>% 
+    arrange(-n) %>% 
+    mutate(is_target = ifelse(str_detect(VC_NAME, "加算"), 0, 1))
+
+f_excel_out<- "./ope_record_temp.xlsx"
+# write.xlsx(x = df_ope_summary,
+#            file = f_excel_out, overwrite = F)
+```
+
+```{r}
+f_ope_mst <- "./ope_record_temp_fix2.xlsx"
+df_ope_mst <- read.xlsx(f_ope_mst) %>%
+    mutate(is_end = str_detect(VC_NAME, "内視鏡的"),
+           is_cr = str_detect(VC_NAME, "腸|リンパ節群郭清|骨盤内臓全摘|肛門悪性腫瘍") & !str_detect(VC_NAME, "内視鏡的"),
+           is_liver = str_detect(VC_NAME, "肝"),
+           is_lung = str_detect(VC_NAME, "肺"))
+
+df_ope_mst %>%
+    filter(is_target == 1) %>%
+    filter(!is_end & !is_cr & !is_liver & !is_lung)
+
+df_ope_mst %>%
+    filter(is_target == 1) %>%
+    filter(is_end & is_cr)
+
+df_ope_mst %>%
+    filter(is_target == 1) %>%
+    group_by(is_end, is_cr, is_liver, is_lung) %>%
+    summarise(n=n())
+```
+
+```{r}
+df_ope_with_annot <- df_ope %>%
+    dplyr::left_join(df_ope_mst, by =c("FC_KCODE", "VC_NAME")) %>%
+    filter(is_target == 1)  %>%
+    dplyr::select(-n) %>%
+    mutate(categ = case_when(
+        is_end~ "endo_tx",
+        is_cr ~ "colrec_sx",
+        is_liver ~ "liv_sx",
+        is_lung ~ "lng_sx",
+        T~"notmatched"))
+```
+
+
+```{r}
+df_zero <- expand.grid(PT_ID = df_ope_with_annot$PT_ID %>% unique(),
+                       categ = df_ope_with_annot$categ %>% unique()) %>%
+    mutate(date = lubridate::ymd("1970-1-1"),
+           is_target = 0)
+```
+
+```{r}
+df_ope_with_annot_cumsum <- df_ope_with_annot %>%
+    bind_rows(df_zero) %>%
+    arrange(PT_ID, date) %>%
+    tidyr::complete(nesting(PT_ID, date), categ, fill=list(is_target = 0)) %>%
+    dplyr::select(PT_ID, date, categ, is_target) %>%
+# Without "distinct" here, an error will occur if the same category exists twice on the same day.
+    distinct() %>%
+    arrange(PT_ID, date) %>%
+    group_by(PT_ID, categ) %>%
+    mutate(is_target = cumsum(is_target)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = categ, values_from = is_target)
+```
+
+```{r}
+rtx_ex <- c("M004","M0042ｲ","M005")
+df_rad %>%
+    filter(FC_KCODE %in% rtx_ex) %>%
+    group_by(FC_KCODE, VC_NAME) %>%
+    summarise(n= n())
+```
+
+
+```{r}
+df_rad_annot <- df_rad %>%
+    filter(!FC_KCODE %in% rtx_ex)  %>%
+    dplyr::select(PT_ID, date) %>%
+    distinct() %>%
+    mutate(categ = "rtx",
+           is_target = 1) %>%
+    arrange(PT_ID, date)
+```
+
+
+```{r}
+df_si_cumsum <- df_ope_with_annot %>%
+    dplyr::select(PT_ID, date, categ, is_target) %>%
+    bind_rows(df_rad_annot) %>%
+    bind_rows(df_zero) %>%
+    arrange(PT_ID, date) %>%
+    tidyr::complete(nesting(PT_ID, date), categ, fill=list(is_target = 0)) %>%
+    dplyr::select(PT_ID, date, categ, is_target) %>%
+# Without "distinct" here, an error will occur if the same category exists twice on the same day.
+    distinct() %>%
+    arrange(PT_ID, date) %>%
+    group_by(PT_ID, categ) %>%
+    mutate(is_target = cumsum(is_target)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = categ, values_from = is_target)
+```
+
+```{r}
+f_out <- c("../../dat/p8_si_premix/si_cumsum_", ts, ".rds") %>%
+    str_c(collapse = "")
+
+saveRDS(object = df_si_cumsum, file = f_out)
+
+f_out
+```
+
+```{r}
+f_out <- f_out %>%
+    str_replace_all(".rds", ".xlsx")
+
+write.xlsx(x = df_si_cumsum,file = f_out)
+
+f_out
+```
+
+
+```{r}
+sessionInfo()
+```
+

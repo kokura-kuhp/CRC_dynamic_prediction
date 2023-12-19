@@ -1,0 +1,353 @@
+---
+title: "p04_eval_model"
+author: "okura"
+date: "2023-11-10"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# load package
+```{r}
+require(tidyverse)
+require(lubridate)
+require(survival)
+require(nlme)
+require(JM)
+require(openxlsx)
+require(officer)
+require(survivalROC)
+require(ggpubr)
+```
+
+# definition; ggsave2_tri, sv2ggkm
+```{r}
+
+outputdir <- "./figs/"
+if(!dir.exists(outputdir)){
+  dir.create(outputdir)
+}
+
+ggsave2_tri <- function(plot, wid = 9, hei=9){
+  plot_name <- deparse(substitute(plot))
+  
+  #png
+  file_name <- paste(outputdir,plot_name, ".png", sep = "",collapse = "")
+  ggsave(filename = file_name,plot = plot,device = "png",width = wid, height = hei,dpi = 300,units = "cm")
+  
+  
+  #pdf
+  file_name <- paste(outputdir,plot_name, ".pdf", sep = "",collapse = "")
+  
+  #pptx
+  file_name <- paste(outputdir,plot_name, ".pptx", sep = "",collapse = "")
+  plot_ed <- rvg::dml(ggobj = plot,width = wid, height = hei)
+  
+  doc <- read_pptx() %>%
+    add_slide('Title and Content', 'Office Theme') %>%
+    ph_with(value = "", location = ph_location_type(type = "title")) %>%
+    ph_with(value = plot_ed, location = ph_location(type = "body",width = cm2inch(wid), height = cm2inch(hei),left = 2, top = 2))
+  doc %>%
+    print(target = file_name)
+}
+
+inch2cm <- function(x){
+  return(x/0.39370)
+}
+cm2inch <- function(x){
+  return(0.39370*x)
+}
+
+p2cm <- function(x){
+  return(as.integer(0.008466666666666667 * x))
+}
+
+cm2p <- function(x){
+  return(as.integer(118.11023622047244 *x))
+}
+
+sv2ggkm <- function(svfit, df){
+  p <- ggsurvplot(fit = svfit, data = df,
+                risk.table.title = "risk.table.title", risk.table.y.text.col = TRUE,
+           risk.table.y.text = FALSE, fontsize = 5,
+           risk.table = TRUE, tables.theme = theme_pubr(), ggtheme = theme_pubr())
+  p_km <- p$plot
+  p_tb <- p$table
+  p2 <- cowplot::plot_grid(p_km, p_tb, ncol = 1,align = "v", rel_heights = c(3,1))
+  grid::grid.draw(p2)
+  return(p2)
+}
+```
+
+# load and save functions
+```{r}
+append_list <- function(l, x){
+  xname  <- deparse(substitute(x))
+  l[[xname]] <- x
+  return(l)
+}
+
+# load function
+get_vals <- function(l){
+  lnames <- names(l)
+  for(n in lnames){
+    assign(n, l[[n]], pos = .GlobalEnv)
+  }
+  return(lnames)
+}
+```
+
+# timestamp
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+ts
+```
+
+# load files
+```{r}
+f_rds <- "../p03_modeling/dat/eval_list_20231129_045235.rds"
+readRDS(f_rds) %>%
+  get_vals()
+```
+
+# measured CEA vs predicted CEA(mixed-effects model)
+```{r}
+df_mix_predict <- df_mix_cea %>%
+    mutate(xx = predict(fit_mix_cea)) %>% 
+    mutate(yy = log2(CEA))
+
+mix_prediction <- ggplot()+theme_pubr(base_family = "Times")+
+  theme(aspect.ratio = 1)+
+  geom_point(aes(x = xx, y = yy), data=df_mix_predict, size=0.2) +
+  xlab("Predicted log2(CEA)")+ylab("Measured log2(CEA)")
+
+plot(mix_prediction)
+
+ggsave2_tri(mix_prediction)
+
+cor.test(df_mix_predict$xx, df_mix_predict$yy, method = "pearson")
+```
+
+# MSE 
+```{r}
+df_mix_predict_sub <- df_mix_predict %>% 
+  mutate(error_2 = (xx-yy)^2) %>% 
+  summarise(mse = mean(error_2))
+
+df_mix_predict_sub
+```
+
+# Case presentation.1
+```{r}
+options(repr.plot.width=6, repr.plot.height=6)
+
+fig_pred_83 <- ggplot() + theme_pubr(base_size = 15, base_family = "Times") +
+  geom_line(aes(x = year_samp_from_start, y = xx, color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ], 
+                color = "red")+
+  geom_point(aes(x = year_samp_from_start, y = log2(CEA), color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ],
+                size = 0.8, color = "black")+
+  coord_cartesian(xlim = c(0, 8),ylim = c(-1,4), expand = T) + 
+  xlab("years") + ylab("log2(CEA)")
+        
+plot(fig_pred_83)
+
+ggsave2_tri(fig_pred_83)
+```
+
+# Case presentation.1-survival probability
+```{r}
+d_83 <- df_mix_predict %>% 
+  filter(id ==83)
+
+#time = 5, 10, 15, 20
+par(mfrow = c(2, 2))
+for (i in c(5, 10, 15, 20) ) {
+  sfit83_i <- survfitJM(fit_JM_cea, newdata = d_83[1:i, ], idVar = "id") 
+  fig83<- plot(sfit83_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
+       col.area="lightblue", main="Patient 83", ask = F)
+}
+```
+
+# Case presentation.2
+```{r}
+options(repr.plot.width=6, repr.plot.height=6)
+
+fig_pred_317 <- ggplot() + theme_pubr(base_size = 15, base_family = "Times") +
+  geom_line(aes(x = year_samp_from_start, y = xx, color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(317:317), ], 
+                color = "red")+
+  geom_point(aes(x = year_samp_from_start, y = log2(CEA), color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(317:317), ],
+                size = 0.8, color = "black")+
+  coord_cartesian(xlim = c(0, 10),ylim = c(0,8), expand = T) + 
+  xlab("years") + ylab("log2(CEA)")
+        
+plot(fig_pred_317)
+
+ggsave2_tri(fig_pred_317, wid = 18, hei=9)
+```
+
+# Case presentation.2-survival probability
+```{r}
+d_317 <- df_mix_predict %>% 
+  filter(id == 317)
+
+#time = 25, 50, 75, 100
+par(mfrow = c(2, 2))
+fig_317 <- for (i in c(25, 50, 75, 100) ) {
+  sfit317_i <- survfitJM(fit_JM_cea, newdata = d_317[1:i, ], idVar = "id") 
+  plot317_i <- plot(sfit317_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
+       col.area="lightblue", main="Patient 317", ask = F)
+}
+```
+
+# Figure_whole
+```{r}
+df_whole <- df_mix_cea %>% 
+  dplyr::select(id, CEA, year_samp_from_start) %>% 
+  rename(x = year_samp_from_start) %>% 
+  rename(y = CEA) %>% 
+  mutate(y = log2(y)) %>% 
+  mutate(id = as.numeric(id))
+
+fig_whole <- ggplot() + theme(legend.position = "none") + theme_pubr(base_size = 20, base_family = "Times") + 
+              labs(y = "Measured" ~ log[2]("CEA")) + scale_x_continuous(name = "(years)") 
+
+for(i in c(1:max(df_whole$id))){
+  fig_whole <- fig_whole +
+               geom_line(data = df_whole[df_whole$id ==i, ], aes(x = x, y= y), color = "black", linetype = "solid", linewidth = 0.3)
+}
+
+fig_whole <- fig_whole + 
+  geom_smooth(data = df_whole, aes(x = x, y = y), method = "lm", se = FALSE, color = "red")
+
+fig_whole
+
+ggsave2_tri(fig_whole)
+```
+
+# time-dependent ROC:each model
+```{r}
+ROC_cox_sub <- function(cutoff){
+    cox_roc <- survivalROC(Stime = df_mix_cea$time_y, status = df_mix_cea$event, 
+                          marker = log2(df_mix_cea$CEA),
+                          predict.time = cutoff, method = "NNE", span = 0.25)
+
+        plot(x = cox_roc$FP, y = cox_roc$TP, type = "l", 
+        xlim = c(0, 1), ylim = c(0, 1), 
+        xlab = paste("FP", "\n", "AUC =", round(cox_roc$AUC, 3)),
+        ylab = "TP", main = paste("COX-CEA ,Method = NNE \n Time =", cutoff, "(year)"))
+        abline(0, 1)
+
+        cox_roc$AUC
+}
+
+ROC_jm_sub <- function(cutoff, model){
+    df_jm_pred <- ranef(model) %>% 
+      as.data.frame() %>% 
+      `colnames<-`(c("r_intercept", "r_slope")) %>%
+      mutate(id = rownames(.))
+    
+    df_mix_cea_sub <- df_mix_cea %>% 
+      left_join(df_jm_pred, by = "id") %>% 
+      mutate(prd_fix = predict(model, newdata = ., idVar = "id")) %>% 
+      mutate(prd_rnd = year_samp_from_start*r_slope + r_intercept) %>% 
+      mutate(CEA_pred = prd_fix + prd_rnd) %>% 
+      group_by(id) %>% 
+      filter(year_samp_from_start == max(year_samp_from_start[year_samp_from_start <= cutoff]))
+    
+    jm_roc <- survivalROC(Stime = df_mix_cea_sub$time_y, status = df_mix_cea_sub$event, 
+                          marker = df_mix_cea_sub$CEA_pred, predict.time = cutoff,
+                          method = "NNE", span = 0.25)
+    
+    fig_jm <- plot(x = jm_roc$FP, y = jm_roc$TP, type = "l", 
+        xlim = c(0, 1), ylim = c(0, 1),
+        xlab = paste("FP", "\n", "AUC =", round(jm_roc$AUC, 3)),
+        ylab = "TP", main = paste("JM-CEA ,Method = NNE \n Time =", cutoff, "(year)"))
+        abline(0, 1)
+    jm_roc$AUC
+}
+
+par(mfrow = c(2, 3))
+for(i in c(1:5)){
+  ROC_cox_sub(i)
+}
+
+par(mfrow = c(2, 3))
+for(i in c(1:5)){
+  ROC_jm_sub(i, fit_JM_cea)
+}
+```
+
+# time-dependent ROC:comparison
+```{r}
+COX_AUC <- function(cut){
+    cutoff <- cut
+    cox_roc <- survivalROC(Stime = df_mix_cea$time_y, status = df_mix_cea$event, 
+                          marker = log2(df_mix_cea$CEA),
+                          predict.time = cutoff, method = "NNE", span = 0.25)
+    print(cox_roc$AUC)
+}
+
+JM_AUC <- function(cutoff, model){
+    df_jm_pred <- ranef(model) %>% 
+      as.data.frame() %>% 
+      `colnames<-`(c("r_intercept", "r_slope")) %>%
+      mutate(id = rownames(.))
+    
+    df_mix_cea_sub <- df_mix_cea %>% 
+      left_join(df_jm_pred, by = "id") %>% 
+      mutate(prd_fix = predict(model, newdata = ., idVar = "id")) %>% 
+      mutate(prd_rnd = year_samp_from_start*r_slope + r_intercept) %>% 
+      mutate(CEA_pred = prd_fix + prd_rnd) %>% 
+      group_by(id) %>% 
+      filter(year_samp_from_start == max(year_samp_from_start[year_samp_from_start <= cutoff]))
+    
+    jm_roc <- survivalROC(Stime = df_mix_cea_sub$time_y, status = df_mix_cea_sub$event, 
+                          marker = df_mix_cea_sub$CEA_pred, predict.time = cutoff,
+                          method = "NNE", span = 0.25)
+    jm_roc$AUC
+}
+
+years = c(1, 2, 3, 4, 5)
+cox_auc=c()
+jm_auc=c()
+
+for(i in years){
+cox_auc <- c(cox_auc, round(COX_AUC(i), 3))
+jm_auc  <- c(jm_auc, round(JM_AUC(i, fit_JM_cea), 3))
+}
+
+df_auc <- tibble(years, cox_auc, jm_auc) %>%
+  print()
+
+df_auc <- tibble(years, cox_auc, jm_auc) %>% 
+  pivot_longer(cols = c("cox_auc", "jm_auc"), 
+               names_to = "model", 
+               values_to = "auc") 
+
+fig_auc <- ggplot(df_auc, aes(x = years, y = auc, color = model)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) + 
+  theme(
+  axis.text.x = element_text(size = 15),
+  axis.text.y = element_text(size = 15),
+  axis.title = element_text(size = 25),
+  legend.text = element_text(size = 20),
+  legend.title = element_text(size = 20)
+ ) + 
+  theme_pubr(base_size = 15, base_family = "Times")
+
+print(fig_auc)
+
+ggsave2_tri(fig_auc)
+```
+
+```{r}
+sessionInfo()
+```

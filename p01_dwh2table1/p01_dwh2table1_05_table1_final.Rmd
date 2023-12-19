@@ -1,0 +1,79 @@
+---
+title: "p01_dwh2table1_table1"
+author: "fk506cni"
+date: "2023-10-21"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+#from table1
+```{r}
+require(openxlsx)
+require(tidyverse)
+require(table1)
+require(survival)
+require(survminer)
+```
+
+```{r}
+ts <- Sys.time()  %>% 
+    as.character() %>% 
+    str_remove_all(., "[-:]*") %>% 
+    str_replace(.," ", "_")
+ts
+```
+
+```{r}
+f <- "../../dat/p1_mcp2dwh/df_ex_pts_20231129_041517_with_biomfollow_mr.rds"
+
+df <- readRDS(f)
+
+f_innaigan_smr_rds <- "../../dat/p1_mcp2dwh/df_innnaigan_smr_20231129_040508.rds"
+df_innaigan_smr <- readRDS(f_innaigan_smr_rds)
+```
+
+
+```{r}
+df_in <- df %>%
+    filter(PT_ID != "00000090") %>%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID) %>%
+    filter(had_ex_cancer_1st_fill == 0) %>%
+    filter(had_ex_adenocarci_fill == 0) %>%
+    filter(had_unknown_cstage_1stcrc_fill == 0) %>%
+    filter(without_3mkr == 0) %>%
+    filter(with_hd_prestart == 0) %>%
+    filter(have_pre_ex_prs == 0) %>%
+    filter(have_pre_ex_inj == 0) 
+
+df_in %>%
+    filter(time_dt < 0)  %>%
+    dim()
+```
+
+```{r}
+tb1 <- table1(~age_at_start+gender+cT_categ_fix+cN_categ_fix+cM_categ_fix+diffgrade_fix+position_fix+CEA_count|cStage_fix,
+             data=df_in)
+
+tb1
+```
+
+
+```{r}
+f_table1 <- c("./table1_",
+              ts,
+              ".xlsx") %>%
+    str_c(collapse = "")
+f_table1
+```
+
+```{r}
+tb1 %>%
+    as.data.frame() %>%
+    write.xlsx(file = f_table1)
+```
+
+```{r}
+sessionInfo()
+```
+
