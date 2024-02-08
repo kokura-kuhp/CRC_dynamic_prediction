@@ -494,7 +494,7 @@ display: none;
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20231129_041955&quot;</code></pre>
+<pre><code>## [1] &quot;20240208_030152&quot;</code></pre>
 <pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_20231129_041517_with_biomfollow_mr.rds&quot;
 
 df &lt;- readRDS(f)
@@ -820,7 +820,7 @@ tb1</code></pre>
               &quot;.xlsx&quot;) %&gt;%
     str_c(collapse = &quot;&quot;)
 f_table1</code></pre>
-<pre><code>## [1] &quot;./table1_20231129_041955.xlsx&quot;</code></pre>
+<pre><code>## [1] &quot;./table1_20240208_030152.xlsx&quot;</code></pre>
 <pre class="r"><code>tb1 %&gt;%
     as.data.frame() %&gt;%
     write.xlsx(file = f_table1)</code></pre>

@@ -9,11 +9,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="okura" />
+<meta name="author" content="fk506cni/okura" />
 
-<meta name="date" content="2023-10-25" />
+<meta name="date" content="2023-11-05" />
 
-<title>p02_data_handling</title>
+<title>p05_validation</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,15 +350,15 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">p02_data_handling</h1>
-<h4 class="author">okura</h4>
-<h4 class="date">2023-10-25</h4>
+<h1 class="title toc-ignore">p05_validation</h1>
+<h4 class="author">fk506cni/okura</h4>
+<h4 class="date">2023-11-05</h4>
 
 </div>
 
 
-<div id="install-package" class="section level1">
-<h1>install package</h1>
+<div id="load-package" class="section level1">
+<h1>load package</h1>
 <pre class="r"><code>require(tidyverse)</code></pre>
 <pre><code>## Loading required package: tidyverse</code></pre>
 <pre><code>## Warning in system(&quot;timedatectl&quot;, intern = TRUE): running command &#39;timedatectl&#39;
@@ -373,27 +373,8 @@ display: none;
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()
 ## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
-<pre class="r"><code>require(data.table)</code></pre>
-<pre><code>## Loading required package: data.table
-## 
-## Attaching package: &#39;data.table&#39;
-## 
-## The following objects are masked from &#39;package:lubridate&#39;:
-## 
-##     hour, isoweek, mday, minute, month, quarter, second, wday, week,
-##     yday, year
-## 
-## The following objects are masked from &#39;package:dplyr&#39;:
-## 
-##     between, first, last
-## 
-## The following object is masked from &#39;package:purrr&#39;:
-## 
-##     transpose</code></pre>
 <pre class="r"><code>require(lubridate)
-require(IRdisplay)</code></pre>
-<pre><code>## Loading required package: IRdisplay</code></pre>
-<pre class="r"><code>require(survival)</code></pre>
+require(survival)</code></pre>
 <pre><code>## Loading required package: survival</code></pre>
 <pre class="r"><code>require(nlme)</code></pre>
 <pre><code>## Loading required package: nlme
@@ -420,490 +401,144 @@ require(IRdisplay)</code></pre>
 <pre><code>## Loading required package: officer</code></pre>
 <pre class="r"><code>require(survivalROC)</code></pre>
 <pre><code>## Loading required package: survivalROC</code></pre>
-<pre><code>## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called &#39;survivalROC&#39;</code></pre>
+<pre class="r"><code>require(ggpubr)</code></pre>
+<pre><code>## Loading required package: ggpubr</code></pre>
+<pre class="r"><code>require(rsample)</code></pre>
+<pre><code>## Loading required package: rsample</code></pre>
 </div>
-<div id="definition-zero_pad" class="section level1">
-<h1>definition; zero_pad</h1>
-<pre class="r"><code>zero_pad &lt;- function(x) {
-  sprintf(&quot;%08d&quot;, x)
+<div id="definition-ggsave2_tri-sv2ggkm" class="section level1">
+<h1>definition; ggsave2_tri, sv2ggkm</h1>
+<pre class="r"><code>outputdir &lt;- &quot;./figs/&quot;
+if(!dir.exists(outputdir)){
+  dir.create(outputdir)
+}
+
+ggsave2_tri &lt;- function(plot, wid = 9, hei=9){
+  plot_name &lt;- deparse(substitute(plot))
+  
+  #png
+  file_name &lt;- paste(outputdir,plot_name, &quot;.png&quot;, sep = &quot;&quot;,collapse = &quot;&quot;)
+  ggsave(filename = file_name,plot = plot,device = &quot;png&quot;,width = wid, height = hei,dpi = 300,units = &quot;cm&quot;)
+  
+  
+  #pdf
+  file_name &lt;- paste(outputdir,plot_name, &quot;.pdf&quot;, sep = &quot;&quot;,collapse = &quot;&quot;)
+
+  #pptx
+  file_name &lt;- paste(outputdir,plot_name, &quot;.pptx&quot;, sep = &quot;&quot;,collapse = &quot;&quot;)
+  plot_ed &lt;- rvg::dml(ggobj = plot,width = wid, height = hei)
+  
+  doc &lt;- read_pptx() %&gt;%
+    add_slide(&#39;Title and Content&#39;, &#39;Office Theme&#39;) %&gt;%
+    ph_with(value = &quot;&quot;, location = ph_location_type(type = &quot;title&quot;)) %&gt;%
+    ph_with(value = plot_ed, location = ph_location(type = &quot;body&quot;,width = cm2inch(wid), height = cm2inch(hei),left = 2, top = 2))
+  doc %&gt;%
+    print(target = file_name)
+}
+
+inch2cm &lt;- function(x){
+  return(x/0.39370)
+}
+cm2inch &lt;- function(x){
+  return(0.39370*x)
+}
+
+p2cm &lt;- function(x){
+  return(as.integer(0.008466666666666667 * x))
+}
+
+cm2p &lt;- function(x){
+  return(as.integer(118.11023622047244 *x))
+}
+
+sv2ggkm &lt;- function(svfit, df){
+  p &lt;- ggsurvplot(fit = svfit, data = df,
+                risk.table.title = &quot;risk.table.title&quot;, risk.table.y.text.col = TRUE,
+           risk.table.y.text = FALSE, fontsize = 5,
+           risk.table = TRUE, tables.theme = theme_pubr(), ggtheme = theme_pubr())
+  p_km &lt;- p$plot
+  p_tb &lt;- p$table
+  p2 &lt;- cowplot::plot_grid(p_km, p_tb, ncol = 1,align = &quot;v&quot;, rel_heights = c(3,1))
+  grid::grid.draw(p2)
+  return(p2)
 }</code></pre>
 </div>
-<div id="definition-time-stamp" class="section level1">
-<h1>definition; time stamp</h1>
+<div id="load-and-save-functions" class="section level1">
+<h1>load and save functions</h1>
+<pre class="r"><code>append_list &lt;- function(l, x){
+  xname  &lt;- deparse(substitute(x))
+  l[[xname]] &lt;- x
+  return(l)
+}
+
+
+# load function
+get_vals &lt;- function(l){
+  lnames &lt;- names(l)
+  for(n in lnames){
+    assign(n, l[[n]], pos = .GlobalEnv)
+  }
+  return(lnames)
+}</code></pre>
+</div>
+<div id="definition-timestamp" class="section level1">
+<h1>definition; timestamp</h1>
 <pre class="r"><code>ts &lt;- Sys.time()  %&gt;% 
     as.character() %&gt;% 
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
-    str_replace(.,&quot; &quot;, &quot;_&quot;)</code></pre>
-</div>
-<div id="read-each-file" class="section level1">
-<h1>read each file</h1>
-<pre class="r"><code>#df_lab
-f_lab &lt;- &#39;../../dat/p1_mcp2dwh/lab_col28_20230704_051454_386123.csv.bz2&#39;
-df_lab &lt;- fread(f_lab) %&gt;% 
-    mutate(SAMPLING_DATE = as.Date(SAMPLING_DATE, origin = &quot;1899-12-30&quot;))
+    str_replace(.,&quot; &quot;, &quot;_&quot;)
+ts</code></pre>
+<pre><code>## [1] &quot;20240208_084623&quot;</code></pre>
+<pre class="r"><code>f_rds &lt;- &quot;../p03_modeling/dat/eval_list_20231129_045235.rds&quot;
+readRDS(f_rds) %&gt;%
+  get_vals()</code></pre>
+<pre><code>## [1] &quot;df_mix_1st&quot;  &quot;fit_cox&quot;     &quot;df_cox&quot;      &quot;df_mix_cea&quot;  &quot;fit_cox_sub&quot;
+## [6] &quot;fit_mix_cea&quot; &quot;fit_JM_cea&quot;</code></pre>
+<pre class="r"><code>df_mix_smr &lt;- df_mix_cea %&gt;% 
+  dplyr::select(id, matches(&quot;^(inj|prs|si)_&quot;)) %&gt;%
+  mutate_at(vars(matches(&quot;^(inj|prs|si)_&quot;)), ~if_else(. &gt;0, 1, 0)) %&gt;%
+  group_by(id) %&gt;% 
+  summarise(across(matches(&quot;^(prs|inj|si)_&quot;), max)) %&gt;%
+  pivot_longer(cols = -id) %&gt;%
+  group_by(name) %&gt;%
+  summarise(n=n(),
+            user=sum(value)) %&gt;% 
+  rename(variable = name) %&gt;% 
+  rename(total = n) %&gt;% 
+  mutate(percentage = 100*round(user/total, digits = 3))
 
-#df_pts_somat
-f_pts_somat &lt;- &#39;../../dat/p1_mcp2dwh/df_pts_somat.rds&#39;
-df_pts_somat &lt;- readRDS(f_pts_somat) %&gt;% 
-    mutate(in_date = as.Date(in_date, origin = &quot;1899-12-30&quot;))
+print(df_mix_smr, n=22)</code></pre>
+<pre><code>## # A tibble: 22 × 4
+##    variable     total  user percentage
+##    &lt;chr&gt;        &lt;int&gt; &lt;dbl&gt;      &lt;dbl&gt;
+##  1 inj_AFL        614    12        2  
+##  2 inj_Bev        614   177       28.8
+##  3 inj_Cmab       614    76       12.4
+##  4 inj_FU_LV      614   202       32.9
+##  5 inj_HER        614     0        0  
+##  6 inj_IRI        614   205       33.4
+##  7 inj_Nivo       614     1        0.2
+##  8 inj_OHP        614   316       51.5
+##  9 inj_Pembro     614     1        0.2
+## 10 inj_Pmab       614    95       15.5
+## 11 inj_Rmab       614    13        2.1
+## 12 prs_BINI       614     1        0.2
+## 13 prs_Cape       614   246       40.1
+## 14 prs_REG        614    34        5.5
+## 15 prs_TAS102     614    71       11.6
+## 16 prs_TS1        614   121       19.7
+## 17 prs_UFT        614    38        6.2
+## 18 si_colrec_sx   614   490       79.8
+## 19 si_endo_tx     614   107       17.4
+## 20 si_liv_sx      614   136       22.1
+## 21 si_lng_sx      614    76       12.4
+## 22 si_rtx         614   141       23</code></pre>
+<pre class="r"><code>f_cross_valid &lt;- &quot;../p05_cross_validation/cross_valid_tsxx.xlsx&quot; %&gt;% 
+  str_replace(&quot;tsxx&quot;, ts)
 
-# df_pts
-f_pts &lt;- &#39;../../dat/p1_mcp2dwh/df_ex_pts_20231129_041815_with_biomfollow_mr.rds&#39;
-df_pts &lt;- readRDS(f_pts)  %&gt;% 
-    dplyr::select(-CEA, -`CA19-9`) %&gt;% 
-    mutate(gender = if_else(gender == &quot;1：男&quot;, &quot;1&quot;, &quot;0&quot;))
-    
-# df_injt
-f_injt &lt;- &#39;../../dat/p1_mcp2dwh/injt_col69_20230704_051454_386123.csv.bz2&#39;
-df_injt &lt;- fread(f_injt) %&gt;% 
-    mutate(PLAN_START_DATE = as.Date(PLAN_START_DATE, origin = &quot;1899-12-30&quot;))
-
-# df_prs
-f_prs &lt;- &#39;../../dat/p1_mcp2dwh/prs_col73_20230704_051454_386123.csv.bz2&#39;
-df_prs &lt;- fread(f_prs) %&gt;% 
-    mutate(TAKING_START_DATE = as.Date(TAKING_START_DATE, origin = &quot;1899-12-30&quot;)) 
-
-# df_si
-f_si &lt;- &#39;../../dat/p8_si_premix/si_cumsum_20231129_043431.rds&#39;
-df_si &lt;- readRDS(f_si)</code></pre>
-</div>
-<div id="modify-table-1df_lab" class="section level1">
-<h1>modify table #1(df_lab)</h1>
-</div>
-<div id="df_marker" class="section level1">
-<h1>df_marker</h1>
-<pre class="r"><code>cat_markers &lt;- c(&quot;CA19-9&quot;, &quot;CEA&quot;, &quot;CA125&quot;)
-
-df_lab_marker &lt;- df_lab %&gt;% 
-    filter(EXAM_TYPE != &quot;尿定性&quot;)%&gt;% 
-    filter(EXAM_ITEM %in% cat_markers) %&gt;% 
-    dplyr::select(PT_ID, SAMPLING_DATE, SAMPLING_TIME, EXAM_ITEM, RESULT_CHAR, RESULT_NUM, RESULT_UNIT) %&gt;% 
-    rename(samp_date = SAMPLING_DATE) %&gt;% 
-    rename(samp_time = SAMPLING_TIME) %&gt;% 
-    rename(t_marker = EXAM_ITEM) %&gt;% 
-    rename(res_char = RESULT_CHAR) %&gt;% 
-    rename(res_num = RESULT_NUM) %&gt;% 
-    rename(res_unit = RESULT_UNIT) %&gt;% 
-    mutate(PT_ID = zero_pad(PT_ID)) %&gt;% 
-    filter(res_char !=&quot;ｷｬﾝｾﾙ&quot;) %&gt;% 
-    mutate(fix_char = res_char %&gt;%
-        str_remove_all(&quot;[&lt;&gt;]*&quot;) %&gt;%
-        as.character()) %&gt;% 
-    mutate(fix_num = as.numeric(fix_char)) %&gt;% 
-    dplyr::select(PT_ID, samp_date, samp_time, t_marker, fix_num)  %&gt;% 
-    rename(num = fix_num) 
-
-df_marker &lt;- df_lab_marker %&gt;% 
-    arrange(PT_ID, samp_date) %&gt;% 
-    group_by(PT_ID, samp_date, t_marker) %&gt;% 
-    summarize(num = mean(num)) %&gt;% 
-    pivot_wider(names_from = t_marker, values_from = num, values_fill = 0) </code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;PT_ID&#39;, &#39;samp_date&#39;. You can override
-## using the `.groups` argument.</code></pre>
-</div>
-<div id="modify-table-2df_pts" class="section level1">
-<h1>modify table #2(df_pts)</h1>
-</div>
-<div id="df_pts_sub2" class="section level1">
-<h1>df_pts_sub2</h1>
-<pre class="r"><code>df_pts_sub &lt;- df_pts %&gt;% 
-    filter(had_ex_cancer_1st_fill == 0 ) %&gt;% 
-    filter(had_ex_cancer_1st_fill == 0 ) %&gt;% 
-    filter(had_ex_adenocarci_fill == 0 ) %&gt;% 
-    filter(had_unknown_cstage_1stcrc_fill == 0 ) %&gt;% 
-    filter(without_3mkr == 0 ) %&gt;% 
-    filter(with_hd_prestart == 0 ) %&gt;% 
-    filter(have_pre_ex_prs == 0 ) %&gt;% 
-    filter(have_pre_ex_inj == 0 ) 
-
-df_pts_sub2 &lt;- df_pts_sub %&gt;% 
-        dplyr::select(-contains(&quot;have&quot;), -contains(&quot;had&quot;), -contains(&quot;with&quot;), -messe, 
-                      -cStage, -cT_categ, -cN_categ, -cM_categ, -diffgrade)</code></pre>
-</div>
-<div id="modify-table-3df_injt" class="section level1">
-<h1>modify table #3(df_injt)</h1>
-</div>
-<div id="df_injt_colon" class="section level1">
-<h1>df_injt_colon</h1>
-<pre class="r"><code>df_injt_c &lt;- df_injt %&gt;% 
-    dplyr::filter(ANTI_CANCER_FLG == &quot;＋&quot;) %&gt;% 
-    dplyr::select(PT_ID, PLAN_START_DATE, DRUG_PRICE_LIST_CD, INJ_DRUG, EXEC_AMOUNT_DOSE, EXEC_UNIT) %&gt;% 
-    rename(inj_date = PLAN_START_DATE) %&gt;% 
-    rename(drug_no = DRUG_PRICE_LIST_CD) %&gt;% 
-    rename(drug_name = INJ_DRUG) %&gt;% 
-    rename(dose = EXEC_AMOUNT_DOSE) %&gt;% 
-    rename(unit = EXEC_UNIT) %&gt;% 
-    mutate(PT_ID = zero_pad(PT_ID)) 
-
-df_injt_name &lt;- df_injt_c %&gt;% 
-    ungroup() %&gt;% 
-    group_by(drug_no, drug_name, unit) %&gt;% 
-    summarise(n = n()) %&gt;% 
-    arrange(-n)</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;drug_no&#39;, &#39;drug_name&#39;. You can override
-## using the `.groups` argument.</code></pre>
-<pre class="r"><code>f_excel_out&lt;- &quot;./df_injt_c_tsxx.xlsx&quot;
-# f_excel_out1 &lt;- f_excel_out %&gt;% 
-#   str_replace(&quot;tsxx&quot;, ts)
-# write.xlsx(x = df_injt_name,
-#            file = f_excel_out1, overwrite = T)</code></pre>
-<pre class="r"><code>f_cancer_drug &lt;- &#39;./df_injt_c_20231025_023956.xlsx&#39;
-# selected drugs indicated for colorectal cancer
-
-df_cancer_drug&lt;- read.xlsx(f_cancer_drug) %&gt;% 
-    dplyr::select(drug_no, drug, include)
-
-df_injt_colon &lt;- df_injt_c %&gt;% 
-    left_join(df_cancer_drug, by = &quot;drug_no&quot;, relationship = &quot;many-to-many&quot;) %&gt;% 
-    filter(include ==1)  %&gt;% 
-    group_by(PT_ID, inj_date, drug) %&gt;% 
-    arrange(inj_date) %&gt;% 
-    mutate(dose_sum = sum(dose)) %&gt;% 
-    dplyr::select(PT_ID, inj_date, drug, dose_sum, unit) %&gt;% 
-    distinct() %&gt;% 
-    mutate(drug = str_c(&quot;inj_&quot;, drug, sep = &quot;&quot;))</code></pre>
-</div>
-<div id="modify-table-4df_prs" class="section level1">
-<h1>modify table #4(df_prs)</h1>
-</div>
-<div id="df_prs_colon" class="section level1">
-<h1>df_prs_colon</h1>
-<pre class="r"><code>df_prs_c &lt;- df_prs %&gt;% 
-    filter(ANTI_CANCER_FLG == &quot;＋&quot;) %&gt;% 
-    dplyr::select(PT_ID, TAKING_START_DATE, ONEDAY_DOES, ONEDAY_UNIT, RP_DAYS, ORDER_AMOUNT_DOSE, DRUG_CD, DRUG) %&gt;% 
-    rename(prs_dt = TAKING_START_DATE) %&gt;% 
-    rename(day_dose = ONEDAY_DOES) %&gt;% 
-    rename(day_unit = ONEDAY_UNIT) %&gt;% 
-    rename(rp_days = RP_DAYS) %&gt;% 
-    rename(order_num = ORDER_AMOUNT_DOSE) %&gt;% 
-    rename(drug_cd = DRUG_CD) %&gt;% 
-    rename(drug = DRUG) %&gt;% 
-    mutate(PT_ID = zero_pad(PT_ID))  %&gt;% 
-    ungroup()</code></pre>
-</div>
-<div id="correct-drugs-with-bsadate-of-1st-date" class="section level1">
-<h1>correct drugs with BSA(date of 1st date)</h1>
-<div id="inj" class="section level2">
-<h2>inj</h2>
-<pre class="r"><code>df_pts_somat_f &lt;- df_pts_somat %&gt;% 
-    dplyr::select(PT_ID, in_date, bsa_f, bsa_dub)
-
-#min_inj_date: 1st injection date in dataset
-df_injt_somat5 &lt;- df_injt_colon %&gt;% 
-    group_by(PT_ID) %&gt;% 
-    arrange(PT_ID, inj_date) %&gt;% 
-    mutate(min_inj_date = min(inj_date)) 
-
-#left join bsa data for each patient
-df_injt_somat6 &lt;- df_injt_somat5 %&gt;% 
-    left_join(df_pts_somat_f, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;) %&gt;% 
-    dplyr::select(PT_ID, inj_date ,min_inj_date, drug, dose_sum, unit, in_date, bsa_f, bsa_dub) 
-
-#choose 1st bsa before 1st administration
-df_injt_somat8 &lt;- df_injt_somat6 %&gt;% 
-    mutate(dif_date = difftime(min_inj_date, in_date, units = &quot;days&quot;)) %&gt;% 
-    filter(dif_date &gt;= 0)   %&gt;%
-    group_by(PT_ID, inj_date, drug) %&gt;% 
-    mutate(rank_date = rank(dif_date)) %&gt;% 
-    filter(rank_date ==1)
-
-#patient witout bsa: they were not included in analysis from another reason.
-df.na  &lt;- df_injt_somat8 %&gt;% 
-    filter(is.na(bsa_f)) %&gt;% 
-    ungroup(drug, inj_date) %&gt;% 
-    dplyr::select(PT_ID, min_inj_date, bsa_f) %&gt;% 
-    distinct()
-
-# injection data with bsa
-df_injt_somat_last &lt;- df_injt_somat8 %&gt;% 
-    mutate(dose_bsa = dose_sum/bsa_f)</code></pre>
-</div>
-</div>
-<div id="calculate-the-total-amount-of-drugs" class="section level1">
-<h1>calculate the total amount of drugs</h1>
-<pre class="r"><code>df_injt_accum &lt;- df_injt_somat_last %&gt;% 
-    group_by(PT_ID, drug)  %&gt;% 
-    ungroup(inj_date) %&gt;% 
-    arrange(PT_ID, drug, inj_date)  %&gt;% 
-    mutate(accum_dose_bsa = cumsum(dose_bsa))
-
-df_injt_new  &lt;- df_injt_accum %&gt;% 
-    dplyr::select(PT_ID, inj_date, drug, dose_sum, accum_dose_bsa, unit) %&gt;% 
-    ungroup()
-
-add_zero_rowi &lt;- function(data){
-    data %&gt;% 
-    add_row(inj_date = as.Date(0, origin = &quot;1899-12-30&quot;))
-}
-
-df_injt_sub &lt;- df_injt_new %&gt;% 
-    group_by(PT_ID, unit, drug) %&gt;%
-    group_modify(~add_zero_rowi(.x))  %&gt;% 
-    ungroup()  %&gt;% 
-    mutate(dose_sum = if_else(is.na(dose_sum), 0, dose_sum)) %&gt;%
-    mutate(accum_dose_bsa = if_else(is.na(accum_dose_bsa), 0, accum_dose_bsa)) </code></pre>
-</div>
-<div id="pivot_wider1tumor_markerinjt" class="section level1">
-<h1>pivot_wider#1(tumor_marker+injt)</h1>
-</div>
-<div id="df_marker_injt_all" class="section level1">
-<h1>df_marker_injt_all</h1>
-<pre class="r"><code>df_marker_injt &lt;- df_marker %&gt;% 
-    left_join(df_injt_sub, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;)  %&gt;% 
-    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, inj_date, drug, accum_dose_bsa) %&gt;%
-    mutate(inj_date = if_else(is.na(inj_date), as.Date(0, origin = &quot;1899-12-30&quot;), inj_date)) %&gt;%
-    mutate(accum_dose_bsa = if_else(is.na(accum_dose_bsa), 0, accum_dose_bsa)) %&gt;%
-    fill(drug, .direction=&quot;up&quot;) %&gt;%
-    group_by(PT_ID, drug, samp_date) %&gt;%
-    arrange(inj_date, samp_date) %&gt;%
-    filter(inj_date &lt; samp_date) %&gt;%
-    slice_max(order_by = inj_date, n=1)
-
-df_marker_injt_all &lt;- df_marker_injt %&gt;% 
-    unique() %&gt;% 
-    dplyr::select(-inj_date) %&gt;% 
-    pivot_wider(names_from = drug, values_from = accum_dose_bsa, values_fill = 0) %&gt;% 
-    dplyr::select(-&quot;NA&quot;) %&gt;%
-    ungroup() %&gt;% 
-    group_by(PT_ID, samp_date) %&gt;% 
-    arrange(PT_ID, samp_date) %&gt;% 
-    mutate(inj_FU_LV = inj_5FU + inj_LV) %&gt;% 
-    dplyr::select(-`inj_5FU`, -`inj_LV`)</code></pre>
-</div>
-<div id="correct-drugs-with-bsadate-of-1st-date-1" class="section level1">
-<h1>correct drugs with BSA(date of 1st date)</h1>
-<div id="prs" class="section level2">
-<h2>prs</h2>
-</div>
-</div>
-<div id="pivot_wider2tumor_markerprs" class="section level1">
-<h1>pivot_wider#2(tumor_marker+prs)</h1>
-</div>
-<div id="df_marker_prs_all" class="section level1">
-<h1>df_marker_prs_all</h1>
-<pre class="r"><code>df_prs_c &lt;- df_prs %&gt;% 
-    filter(ANTI_CANCER_FLG == &quot;＋&quot;) %&gt;% 
-  filter(OVERTIME_HOLIDAY != &quot;持参薬&quot;) %&gt;% 
-    dplyr::select(PT_ID, TAKING_START_DATE, ONEDAY_DOES, ONEDAY_UNIT, RP_DAYS, ORDER_AMOUNT_DOSE, DRUG_CD, DRUG) %&gt;% 
-    rename(prs_dt = TAKING_START_DATE) %&gt;% 
-    rename(day_dose = ONEDAY_DOES) %&gt;% 
-    rename(day_unit = ONEDAY_UNIT) %&gt;% 
-    rename(rp_days = RP_DAYS) %&gt;% 
-    rename(order_num = ORDER_AMOUNT_DOSE) %&gt;% 
-    rename(drug_cd = DRUG_CD) %&gt;% 
-    rename(drug = DRUG) %&gt;% 
-    mutate(PT_ID = zero_pad(PT_ID))  %&gt;% 
-    ungroup()
-
-df_prs_sub &lt;- df_prs_c %&gt;% 
-    arrange(PT_ID, prs_dt) %&gt;% 
-    group_by(PT_ID) %&gt;%
-    filter(prs_dt &gt; &quot;1980-01-01&quot;) %&gt;% 
-    mutate(min_prs_dt = min(prs_dt))%&gt;%
-    left_join(df_pts_somat_f, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;) %&gt;%
-    dplyr::select(PT_ID, prs_dt, order_num, drug, min_prs_dt, in_date, bsa_f, bsa_dub) %&gt;%
-    ungroup() %&gt;%
-    mutate(dif_date = difftime(min_prs_dt, in_date, units = &quot;days&quot;)) %&gt;%
-    filter(dif_date &gt;= 0)%&gt;%
-    group_by(PT_ID, prs_dt, drug) %&gt;%
-    mutate(rank_date = rank(dif_date)) %&gt;%
-    filter(rank_date ==1)
-
-df_prs_name &lt;- df_prs_c %&gt;% 
-    group_by(drug) %&gt;% 
-    summarise(n = n()) %&gt;% 
-    arrange(-n)
-
-f_excel_out2&lt;- &quot;./df_prs_tsxx.xlsx&quot;
-# f_excel_out3 &lt;- f_excel_out2 %&gt;%
-#   str_replace(&quot;tsxx&quot;, ts)
-# write.xlsx(x = df_prs_name,
-#            file = f_excel_out3, overwrite = T)</code></pre>
-<pre class="r"><code>f_cancer_prs &lt;- &#39;./df_prs_20231025_040801.xlsx&#39;
-# selected drugs indicated for colorectal cancer
-
-df_cancer_prs&lt;- read.xlsx(f_cancer_prs) %&gt;% 
-    dplyr::select(drug, drug_prs, per_dose, include)
-
-add_zero_rowp &lt;- function(data){
-    data %&gt;% 
-    add_row(prs_dt = as.Date(0, origin = &quot;1899-12-30&quot;))
-}
-
-# min_prs_date: 1st prs date in dataset
-# left join bsa data for each patients
-# chose 1st bsa before 1st administration.
-# prs data with bsa
-# accum adj dose
-
-df_prs_colon &lt;- df_prs_sub %&gt;% 
-    ungroup() %&gt;% 
-    left_join(df_cancer_prs, by = &quot;drug&quot;) %&gt;%
-    filter(include == 1) %&gt;%
-    dplyr::select(PT_ID, prs_dt, drug_prs, per_dose, order_num, bsa_f) %&gt;%
-    mutate(order_dose = per_dose * order_num) %&gt;%
-    mutate(order_dose_bsa = order_dose/bsa_f)%&gt;%
-    arrange(PT_ID, prs_dt) %&gt;%
-    group_by(PT_ID, drug_prs) %&gt;%
-    mutate(accum_order_dose_bsa = cumsum(order_dose_bsa)) %&gt;%
-    group_modify(~add_zero_rowp(.x))  %&gt;%
-    mutate(accum_order_dose_bsa = if_else(is.na(accum_order_dose_bsa), 0, accum_order_dose_bsa)) %&gt;%
-    arrange(PT_ID, prs_dt) %&gt;%
-    group_by(PT_ID, drug_prs, prs_dt) %&gt;%
-    # Here is due to prescription with different dose combination such as 10mg + 15mg tablets.
-    filter(accum_order_dose_bsa == max(accum_order_dose_bsa)) %&gt;% 
-    mutate(drug_prs = str_c(&quot;prs_&quot;,drug_prs, sep=&quot;&quot;))
-
-df_marker_prs &lt;- df_marker %&gt;% 
-    left_join(df_prs_colon, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;)  %&gt;% 
-    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, prs_dt, drug_prs, accum_order_dose_bsa) %&gt;% 
-    mutate(prs_dt = if_else(is.na(prs_dt), as.Date(0, origin = &quot;1899-12-30&quot;), prs_dt)) %&gt;%
-    mutate(accum_order_dose_bsa = if_else(is.na(accum_order_dose_bsa), 0, accum_order_dose_bsa)) %&gt;%
-    fill(drug_prs, .direction=&quot;up&quot;) %&gt;%
-    group_by(PT_ID, drug_prs, samp_date) %&gt;%
-    arrange(prs_dt, samp_date) %&gt;%
-    filter(prs_dt &lt; samp_date) %&gt;%
-    slice_max(order_by = prs_dt, n=1)
-
-df_marker_prs_all &lt;- df_marker_prs %&gt;%
-    unique() %&gt;% 
-    dplyr::select(-prs_dt) %&gt;% 
-    pivot_wider(names_from = drug_prs, values_from = accum_order_dose_bsa, values_fill = 0) %&gt;% 
-    ungroup() %&gt;% 
-    group_by(PT_ID, samp_date) %&gt;% 
-    arrange(PT_ID, samp_date)</code></pre>
-</div>
-<div id="pivot_wider3tumor_markersi" class="section level1">
-<h1>pivot_wider#3(tumor_marker+si)</h1>
-</div>
-<div id="df_marker_si_all" class="section level1">
-<h1>df_marker_si_all</h1>
-<pre class="r"><code>add_zero_rows &lt;- function(data){
-    data %&gt;% 
-    add_row(si_dt = as.Date(0, origin = &quot;1899-12-30&quot;))
-}
-
-# get accum times/days
-df_marker_si &lt;- df_marker %&gt;% 
-    left_join(df_si, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;)  %&gt;% 
-    dplyr::select(PT_ID, samp_date, CEA, `CA19-9`, CA125, date, colrec_sx, endo_tx, liv_sx, lng_sx, rtx) %&gt;%
-    rename(si_dt = date) %&gt;% 
-    ungroup() %&gt;% 
-    group_by(PT_ID, samp_date, CEA, `CA19-9`, CA125) %&gt;% 
-    group_modify(~add_zero_rows(.x))  %&gt;% 
-    arrange(si_dt, samp_date) %&gt;% 
-    filter(si_dt &lt; samp_date) %&gt;% 
-    slice_max(order_by = si_dt, n=1)
-
-df_marker_si_all &lt;- df_marker_si %&gt;%
-    dplyr::select(-si_dt) %&gt;% 
-    mutate(colrec_sx = if_else(is.na(colrec_sx), 0, colrec_sx)) %&gt;% 
-    mutate(endo_tx = if_else(is.na(endo_tx), 0, endo_tx)) %&gt;% 
-    mutate(liv_sx = if_else(is.na(liv_sx), 0, liv_sx)) %&gt;% 
-    mutate(lng_sx = if_else(is.na(lng_sx), 0, lng_sx)) %&gt;% 
-    mutate(rtx = if_else(is.na(rtx), 0, rtx)) %&gt;% 
-    rename(si_colrec_sx = colrec_sx) %&gt;% 
-    rename(si_endo_tx = endo_tx) %&gt;% 
-    rename(si_liv_sx = liv_sx) %&gt;% 
-    rename(si_lng_sx = lng_sx) %&gt;% 
-    rename(si_rtx = rtx) %&gt;% 
-    ungroup() %&gt;% 
-    group_by(PT_ID, samp_date) %&gt;% 
-    arrange(PT_ID, samp_date)</code></pre>
-</div>
-<div id="combine-each-dataframe" class="section level1">
-<h1>combine each dataframe</h1>
-<pre class="r"><code>df_all  &lt;- cbind(df_marker_injt_all, df_marker_prs_all, df_marker_si_all)</code></pre>
-<pre><code>## New names:
-## • `PT_ID` -&gt; `PT_ID...1`
-## • `samp_date` -&gt; `samp_date...2`
-## • `CEA` -&gt; `CEA...3`
-## • `CA19-9` -&gt; `CA19-9...4`
-## • `CA125` -&gt; `CA125...5`
-## • `PT_ID` -&gt; `PT_ID...17`
-## • `samp_date` -&gt; `samp_date...18`
-## • `CEA` -&gt; `CEA...19`
-## • `CA19-9` -&gt; `CA19-9...20`
-## • `CA125` -&gt; `CA125...21`
-## • `PT_ID` -&gt; `PT_ID...29`
-## • `samp_date` -&gt; `samp_date...30`
-## • `CEA` -&gt; `CEA...31`
-## • `CA19-9` -&gt; `CA19-9...32`
-## • `CA125` -&gt; `CA125...33`</code></pre>
-<pre class="r"><code>are_columns_equal &lt;- function(column1, column2) {
-  return(identical(column1, column2))
-}
-
-#check df integrity.
-print(are_columns_equal(df_all$PT_ID...1, df_all$PT_ID...17))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`samp_date...2`, df_all$samp_date...18))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CEA...3`, df_all$CEA...19))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CA19-9...4`, df_all$`CA19-9...20`))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CA125...5`, df_all$CA125...21))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$PT_ID...1, df_all$PT_ID...29))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`samp_date...2`, df_all$samp_date...30))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CEA...3`, df_all$CEA...31))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CA19-9...4`, df_all$`CA19-9...32`))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>print(are_columns_equal(df_all$`CA125...5`, df_all$CA125...33))</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code>colnames(df_all)</code></pre>
-<pre><code>##  [1] &quot;PT_ID...1&quot;      &quot;samp_date...2&quot;  &quot;CEA...3&quot;        &quot;CA19-9...4&quot;    
-##  [5] &quot;CA125...5&quot;      &quot;inj_L-OHP&quot;      &quot;inj_Nivo&quot;       &quot;inj_IRI&quot;       
-##  [9] &quot;inj_Bev&quot;        &quot;inj_Pmab&quot;       &quot;inj_Cmab&quot;       &quot;inj_AFL&quot;       
-## [13] &quot;inj_Rmab&quot;       &quot;inj_HER&quot;        &quot;inj_Pembro&quot;     &quot;inj_FU_LV&quot;     
-## [17] &quot;PT_ID...17&quot;     &quot;samp_date...18&quot; &quot;CEA...19&quot;       &quot;CA19-9...20&quot;   
-## [21] &quot;CA125...21&quot;     &quot;prs_TS1&quot;        &quot;NA&quot;             &quot;prs_Cape&quot;      
-## [25] &quot;prs_REG&quot;        &quot;prs_TAS102&quot;     &quot;prs_UFT&quot;        &quot;prs_BINI&quot;      
-## [29] &quot;PT_ID...29&quot;     &quot;samp_date...30&quot; &quot;CEA...31&quot;       &quot;CA19-9...32&quot;   
-## [33] &quot;CA125...33&quot;     &quot;si_colrec_sx&quot;   &quot;si_endo_tx&quot;     &quot;si_liv_sx&quot;     
-## [37] &quot;si_lng_sx&quot;      &quot;si_rtx&quot;</code></pre>
-<pre class="r"><code>df_all2  &lt;- df_all %&gt;% 
-    dplyr::select(-`PT_ID...17`, -`samp_date...18`, -`CEA...19`, -`CA19-9...20`, -`CA125...21`, 
-                  -`PT_ID...29`, -`samp_date...30`, -`CEA...31`, -`CA19-9...32`, -`CA125...33`) %&gt;% 
-    rename(PT_ID = `PT_ID...1`) %&gt;% 
-    rename(samp_dt = `samp_date...2`) %&gt;% 
-    rename(CEA = `CEA...3`) %&gt;% 
-    rename(`CA19-9` = `CA19-9...4`) %&gt;% 
-    rename(CA125 = `CA125...5`)</code></pre>
-</div>
-<div id="df_cox-rds" class="section level1">
-<h1>df_cox → rds</h1>
-<pre class="r"><code>df_cox &lt;- df_pts_sub2 %&gt;% 
-    arrange(PT_ID)
-df_cox$id &lt;- as.factor(1:nrow(df_cox))
-
-f_cox_rds &lt;- c(&quot;../p03_modeling/df_cox_&quot;, ts, &quot;.rds&quot;) %&gt;%
-    str_c(collapse = &quot;&quot;)
-
-f_cox_rds</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/df_cox_20231129_044447.rds&quot;</code></pre>
-<pre class="r"><code>df_cox %&gt;% saveRDS(f_cox_rds)</code></pre>
-</div>
-<div id="df_mix-rds" class="section level1">
-<h1>df_mix → rds</h1>
-<pre class="r"><code>df_mix &lt;- df_cox %&gt;% 
-    left_join(df_all2, by = &quot;PT_ID&quot;, relationship = &quot;many-to-many&quot;) %&gt;%
-    mutate(samp_dt = as.Date(samp_dt, origin=&quot;1899-12-30&quot;)) %&gt;% 
-    mutate(year_samp_from_start = difftime(samp_dt, dt_start, units = &quot;days&quot;)/365.25)  %&gt;% 
-    mutate(year_samp_from_start = as.numeric(year_samp_from_start)) %&gt;% 
-    filter(year_samp_from_start &gt;=0) 
-    
-f_mix_rds &lt;- c(&quot;../p03_modeling/df_mix_&quot;, ts, &quot;.rds&quot;) %&gt;%
-    str_c(collapse = &quot;&quot;)
-
-f_mix_rds</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/df_mix_20231129_044447.rds&quot;</code></pre>
-<pre class="r"><code>df_mix %&gt;% saveRDS(f_mix_rds)</code></pre>
+f_cross_valid</code></pre>
+<pre><code>## [1] &quot;../p05_cross_validation/cross_valid_20240208_084623.xlsx&quot;</code></pre>
+<pre class="r"><code># write.xlsx(x = df_mix_smr, file = f_cross_valid, overwrite = T)</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)
 ## Platform: x86_64-conda-linux-gnu (64-bit)
@@ -925,28 +560,31 @@ f_mix_rds</code></pre>
 ## [8] base     
 ## 
 ## other attached packages:
-##  [1] officer_0.6.3     openxlsx_4.2.5.2  JM_1.5-1          MASS_7.3-60      
-##  [5] nlme_3.1-163      survival_3.5-7    IRdisplay_1.1     data.table_1.14.8
-##  [9] lubridate_1.9.3   forcats_1.0.0     stringr_1.5.0     dplyr_1.1.3      
-## [13] purrr_1.0.2       readr_2.1.4       tidyr_1.3.0       tibble_3.2.1     
-## [17] ggplot2_3.4.4     tidyverse_2.0.0  
+##  [1] rsample_1.2.0       ggpubr_0.6.0        survivalROC_1.0.3.1
+##  [4] officer_0.6.3       openxlsx_4.2.5.2    JM_1.5-1           
+##  [7] MASS_7.3-60         nlme_3.1-163        survival_3.5-7     
+## [10] lubridate_1.9.3     forcats_1.0.0       stringr_1.5.0      
+## [13] dplyr_1.1.3         purrr_1.0.2         readr_2.1.4        
+## [16] tidyr_1.3.0         tibble_3.2.1        ggplot2_3.4.4      
+## [19] tidyverse_2.0.0    
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.11       lattice_0.22-5    digest_0.6.33     utf8_1.2.4       
-##  [5] R6_2.5.1          repr_1.1.6        evaluate_0.22     pillar_1.9.0     
-##  [9] rlang_1.1.1       uuid_1.1-1        rstudioapi_0.15.0 jquerylib_0.1.4  
-## [13] R.oo_1.25.0       R.utils_2.12.2    Matrix_1.6-1.1    rmarkdown_2.25   
-## [17] textshaping_0.3.7 bit_4.0.5         munsell_0.5.0     compiler_4.2.3   
-## [21] xfun_0.40         pkgconfig_2.0.3   askpass_1.2.0     systemfonts_1.0.5
-## [25] base64enc_0.1-3   htmltools_0.5.6.1 openssl_2.1.1     tidyselect_1.2.0 
-## [29] fansi_1.0.5       tzdb_0.4.0        withr_2.5.1       R.methodsS3_1.8.2
-## [33] grid_4.2.3        jsonlite_1.8.7    gtable_0.3.4      lifecycle_1.0.3  
-## [37] magrittr_2.0.3    scales_1.2.1      zip_2.3.0         cli_3.6.1        
-## [41] stringi_1.7.12    cachem_1.0.8      xml2_1.3.5        bslib_0.5.1      
-## [45] ragg_1.2.6        generics_0.1.3    vctrs_0.6.4       tools_4.2.3      
-## [49] bit64_4.0.5       glue_1.6.2        hms_1.1.3         fastmap_1.1.1    
-## [53] yaml_2.3.7        timechange_0.2.0  colorspace_2.1-0  knitr_1.44       
-## [57] sass_0.4.7</code></pre>
+##  [1] sass_0.4.7        jsonlite_1.8.7    carData_3.0-5     bslib_0.5.1      
+##  [5] askpass_1.2.0     yaml_2.3.7        globals_0.16.2    pillar_1.9.0     
+##  [9] backports_1.4.1   lattice_0.22-5    glue_1.6.2        uuid_1.1-1       
+## [13] digest_0.6.33     ggsignif_0.6.4    colorspace_2.1-0  htmltools_0.5.6.1
+## [17] Matrix_1.6-1.1    pkgconfig_2.0.3   broom_1.0.5       listenv_0.9.0    
+## [21] scales_1.2.1      tzdb_0.4.0        timechange_0.2.0  openssl_2.1.1    
+## [25] generics_0.1.3    car_3.1-2         cachem_1.0.8      withr_2.5.1      
+## [29] furrr_0.3.1       cli_3.6.1         magrittr_2.0.3    evaluate_0.22    
+## [33] parallelly_1.36.0 fansi_1.0.5       future_1.33.0     rstatix_0.7.2    
+## [37] xml2_1.3.5        textshaping_0.3.7 tools_4.2.3       hms_1.1.3        
+## [41] lifecycle_1.0.3   munsell_0.5.0     zip_2.3.0         compiler_4.2.3   
+## [45] jquerylib_0.1.4   systemfonts_1.0.5 rlang_1.1.1       grid_4.2.3       
+## [49] rstudioapi_0.15.0 rmarkdown_2.25    gtable_0.3.4      codetools_0.2-19 
+## [53] abind_1.4-5       R6_2.5.1          knitr_1.44        fastmap_1.1.1    
+## [57] utf8_1.2.4        ragg_1.2.6        stringi_1.7.12    parallel_4.2.3   
+## [61] Rcpp_1.0.11       vctrs_0.6.4       tidyselect_1.2.0  xfun_0.40</code></pre>
 </div>
 
 

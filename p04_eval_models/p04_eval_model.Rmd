@@ -121,7 +121,7 @@ df_mix_predict <- df_mix_cea %>%
 
 mix_prediction <- ggplot()+theme_pubr(base_family = "Times")+
   theme(aspect.ratio = 1)+
-  geom_point(aes(x = xx, y = yy), data=df_mix_predict, size=0.2) +
+  geom_point(aes(x = xx, y = yy), data=df_mix_predict, size=0.01) +
   xlab("Predicted log2(CEA)")+ylab("Measured log2(CEA)")
 
 plot(mix_prediction)
@@ -140,40 +140,7 @@ df_mix_predict_sub <- df_mix_predict %>%
 df_mix_predict_sub
 ```
 
-# Case presentation.1
-```{r}
-options(repr.plot.width=6, repr.plot.height=6)
-
-fig_pred_83 <- ggplot() + theme_pubr(base_size = 15, base_family = "Times") +
-  geom_line(aes(x = year_samp_from_start, y = xx, color = id),
-                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ], 
-                color = "red")+
-  geom_point(aes(x = year_samp_from_start, y = log2(CEA), color = id),
-                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ],
-                size = 0.8, color = "black")+
-  coord_cartesian(xlim = c(0, 8),ylim = c(-1,4), expand = T) + 
-  xlab("years") + ylab("log2(CEA)")
-        
-plot(fig_pred_83)
-
-ggsave2_tri(fig_pred_83)
-```
-
-# Case presentation.1-survival probability
-```{r}
-d_83 <- df_mix_predict %>% 
-  filter(id ==83)
-
-#time = 5, 10, 15, 20
-par(mfrow = c(2, 2))
-for (i in c(5, 10, 15, 20) ) {
-  sfit83_i <- survfitJM(fit_JM_cea, newdata = d_83[1:i, ], idVar = "id") 
-  fig83<- plot(sfit83_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
-       col.area="lightblue", main="Patient 83", ask = F)
-}
-```
-
-# Case presentation.2
+# Case presentation
 ```{r}
 options(repr.plot.width=6, repr.plot.height=6)
 
@@ -192,7 +159,7 @@ plot(fig_pred_317)
 ggsave2_tri(fig_pred_317, wid = 18, hei=9)
 ```
 
-# Case presentation.2-survival probability
+# Case presentation-survival probability
 ```{r}
 d_317 <- df_mix_predict %>% 
   filter(id == 317)
@@ -233,21 +200,29 @@ ggsave2_tri(fig_whole)
 
 # time-dependent ROC:each model
 ```{r}
-ROC_cox_sub <- function(cutoff){
-    cox_roc <- survivalROC(Stime = df_mix_cea$time_y, status = df_mix_cea$event, 
-                          marker = log2(df_mix_cea$CEA),
-                          predict.time = cutoff, method = "NNE", span = 0.25)
+ROC_cox_sub_fix <- function(cutoff, cox_model){
+  
+  x_cox <- predict(cox_model, type = "lp")
+  y_time <- cox_model$y[,1]
+  y_event <- cox_model$y[,2]
 
-        plot(x = cox_roc$FP, y = cox_roc$TP, type = "l", 
-        xlim = c(0, 1), ylim = c(0, 1), 
-        xlab = paste("FP", "\n", "AUC =", round(cox_roc$AUC, 3)),
-        ylab = "TP", main = paste("COX-CEA ,Method = NNE \n Time =", cutoff, "(year)"))
-        abline(0, 1)
+  span_ <- 0.25 * length(y_time)^(-0.2)
+  
+  cox_roc <- survivalROC(Stime = y_time, status = y_event, 
+                        marker = x_cox,
+                        predict.time = cutoff, method = "NNE", span = span_)
 
-        cox_roc$AUC
+  plot(x = cox_roc$FP, y = cox_roc$TP, type = "l", 
+  xlim = c(0, 1), ylim = c(0, 1), 
+  xlab = paste("FP", "\n", "AUC =", round(cox_roc$AUC, 3)),
+  ylab = "TP", main = paste("COX-CEA ,Method = NNE \n Time =", cutoff, "(year)"))
+  abline(0, 1)
+
+  cox_roc$AUC %>% 
+    return()
 }
 
-ROC_jm_sub <- function(cutoff, model){
+ROC_jm_sub_fix <- function(cutoff, model){
     df_jm_pred <- ranef(model) %>% 
       as.data.frame() %>% 
       `colnames<-`(c("r_intercept", "r_slope")) %>%
@@ -259,93 +234,66 @@ ROC_jm_sub <- function(cutoff, model){
       mutate(prd_rnd = year_samp_from_start*r_slope + r_intercept) %>% 
       mutate(CEA_pred = prd_fix + prd_rnd) %>% 
       group_by(id) %>% 
-      filter(year_samp_from_start == max(year_samp_from_start[year_samp_from_start <= cutoff]))
+      mutate(max_year_samp_from_start_upto_cutoff = max(year_samp_from_start[year_samp_from_start <= cutoff])) %>% 
+      filter(year_samp_from_start == max_year_samp_from_start_upto_cutoff)
+    
+    span_ <- 0.25 * (nrow(df_mix_cea_sub)^(-0.2))
+    
     
     jm_roc <- survivalROC(Stime = df_mix_cea_sub$time_y, status = df_mix_cea_sub$event, 
                           marker = df_mix_cea_sub$CEA_pred, predict.time = cutoff,
-                          method = "NNE", span = 0.25)
+                          method = "NNE", span = span_)
     
     fig_jm <- plot(x = jm_roc$FP, y = jm_roc$TP, type = "l", 
         xlim = c(0, 1), ylim = c(0, 1),
         xlab = paste("FP", "\n", "AUC =", round(jm_roc$AUC, 3)),
         ylab = "TP", main = paste("JM-CEA ,Method = NNE \n Time =", cutoff, "(year)"))
         abline(0, 1)
-    jm_roc$AUC
+    jm_roc$AUC %>% 
+      return()
+}
+
+eval_years <- c(1, 2, 3, 4, 5)
+cox_auc <- c()
+jm_auc <- c()
+
+par(mfrow = c(2, 3))
+for(i in eval_years){
+  cox_auc <- c(cox_auc,
+               ROC_cox_sub_fix(i, fit_cox))
 }
 
 par(mfrow = c(2, 3))
-for(i in c(1:5)){
-  ROC_cox_sub(i)
-}
-
-par(mfrow = c(2, 3))
-for(i in c(1:5)){
-  ROC_jm_sub(i, fit_JM_cea)
+for(i in eval_years){
+  jm_auc <- c(jm_auc,
+              ROC_jm_sub_fix(i, fit_JM_cea))
 }
 ```
 
 # time-dependent ROC:comparison
 ```{r}
-COX_AUC <- function(cut){
-    cutoff <- cut
-    cox_roc <- survivalROC(Stime = df_mix_cea$time_y, status = df_mix_cea$event, 
-                          marker = log2(df_mix_cea$CEA),
-                          predict.time = cutoff, method = "NNE", span = 0.25)
-    print(cox_roc$AUC)
-}
-
-JM_AUC <- function(cutoff, model){
-    df_jm_pred <- ranef(model) %>% 
-      as.data.frame() %>% 
-      `colnames<-`(c("r_intercept", "r_slope")) %>%
-      mutate(id = rownames(.))
-    
-    df_mix_cea_sub <- df_mix_cea %>% 
-      left_join(df_jm_pred, by = "id") %>% 
-      mutate(prd_fix = predict(model, newdata = ., idVar = "id")) %>% 
-      mutate(prd_rnd = year_samp_from_start*r_slope + r_intercept) %>% 
-      mutate(CEA_pred = prd_fix + prd_rnd) %>% 
-      group_by(id) %>% 
-      filter(year_samp_from_start == max(year_samp_from_start[year_samp_from_start <= cutoff]))
-    
-    jm_roc <- survivalROC(Stime = df_mix_cea_sub$time_y, status = df_mix_cea_sub$event, 
-                          marker = df_mix_cea_sub$CEA_pred, predict.time = cutoff,
-                          method = "NNE", span = 0.25)
-    jm_roc$AUC
-}
-
-years = c(1, 2, 3, 4, 5)
-cox_auc=c()
-jm_auc=c()
-
-for(i in years){
-cox_auc <- c(cox_auc, round(COX_AUC(i), 3))
-jm_auc  <- c(jm_auc, round(JM_AUC(i, fit_JM_cea), 3))
-}
-
-df_auc <- tibble(years, cox_auc, jm_auc) %>%
-  print()
-
-df_auc <- tibble(years, cox_auc, jm_auc) %>% 
+df_auc <- tibble(years = eval_years, cox_auc, jm_auc) %>% 
+  print() %>% 
   pivot_longer(cols = c("cox_auc", "jm_auc"), 
                names_to = "model", 
                values_to = "auc") 
 
 fig_auc <- ggplot(df_auc, aes(x = years, y = auc, color = model)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) + 
+  theme_pubr(base_family = "Times")+
   theme(
   axis.text.x = element_text(size = 15),
   axis.text.y = element_text(size = 15),
   axis.title = element_text(size = 25),
   legend.text = element_text(size = 20),
   legend.title = element_text(size = 20)
- ) + 
-  theme_pubr(base_size = 15, base_family = "Times")
+ )+
+    geom_line(size = 1) +
+  geom_point(size = 2) +
+  ylim(0.68, 0.88)
 
-print(fig_auc)
+grid::grid.draw(fig_auc)
 
-ggsave2_tri(fig_auc)
+ggsave2_tri(fig_auc, wid = 12, hei = 9)
 ```
 
 ```{r}

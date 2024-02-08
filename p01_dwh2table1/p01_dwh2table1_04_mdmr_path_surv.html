@@ -11,9 +11,9 @@
 
 <meta name="author" content="fk506cni" />
 
-<meta name="date" content="2023-11-03" />
+<meta name="date" content="2023-10-21" />
 
-<title>p02_data_handling_si</title>
+<title>p1_04_mdmr_path_surv</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,13 +350,15 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">p02_data_handling_si</h1>
+<h1 class="title toc-ignore">p1_04_mdmr_path_surv</h1>
 <h4 class="author">fk506cni</h4>
-<h4 class="date">2023-11-03</h4>
+<h4 class="date">2023-10-21</h4>
 
 </div>
 
 
+<div id="from-p1_04_mdmr_path_surv" class="section level1">
+<h1>from p1_04_mdmr_path_surv</h1>
 <pre class="r"><code>require(tidyverse)</code></pre>
 <pre><code>## Loading required package: tidyverse</code></pre>
 <pre><code>## Warning in system(&quot;timedatectl&quot;, intern = TRUE): running command &#39;timedatectl&#39;
@@ -389,14 +391,52 @@ display: none;
 ## 
 ##     transpose</code></pre>
 <pre class="r"><code>require(lubridate)
-require(openxlsx)</code></pre>
+require(IRdisplay)</code></pre>
+<pre><code>## Loading required package: IRdisplay</code></pre>
+<pre class="r"><code>require(openxlsx)</code></pre>
 <pre><code>## Loading required package: openxlsx</code></pre>
+<pre class="r"><code>require(R.utils)</code></pre>
+<pre><code>## Loading required package: R.utils
+## Loading required package: R.oo
+## Loading required package: R.methodsS3
+## R.methodsS3 v1.8.2 (2022-06-13 22:00:14 UTC) successfully loaded. See ?R.methodsS3 for help.
+## R.oo v1.25.0 (2022-06-12 02:20:02 UTC) successfully loaded. See ?R.oo for help.
+## 
+## Attaching package: &#39;R.oo&#39;
+## 
+## The following object is masked from &#39;package:R.methodsS3&#39;:
+## 
+##     throw
+## 
+## The following objects are masked from &#39;package:methods&#39;:
+## 
+##     getClasses, getMethods
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     attach, detach, load, save
+## 
+## R.utils v2.12.2 (2022-11-11 22:00:03 UTC) successfully loaded. See ?R.utils for help.
+## 
+## Attaching package: &#39;R.utils&#39;
+## 
+## The following object is masked from &#39;package:tidyr&#39;:
+## 
+##     extract
+## 
+## The following object is masked from &#39;package:utils&#39;:
+## 
+##     timestamp
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     cat, commandArgs, getOption, isOpen, nullfile, parse, warnings</code></pre>
 <pre class="r"><code>ts &lt;- Sys.time()  %&gt;% 
     as.character() %&gt;% 
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20231129_043515&quot;</code></pre>
+<pre><code>## [1] &quot;20240208_030027&quot;</code></pre>
 <pre class="r"><code>read_from_tag &lt;- function(ddir, tag=NULL){
     if(is.null(tag)){
         tags &lt;- list.files(ddir, pattern = &quot;csv.bz2&quot;) %&gt;%
@@ -415,215 +455,302 @@ ts</code></pre>
                     str_remove(&quot;col&quot;) %&gt;% 
                     as.integer()
                 print(numcol)
-                df &lt;- fread(f ,colClasses = rep(&quot;character&quot;, numcol))
-                # display(t(head(df)))
+                df &lt;- fread(f, colClasses = rep(&quot;character&quot;, numcol))
             }
             return(df)
         }
     }
-}</code></pre>
-<pre class="r"><code>ddir &lt;- &quot;../../dat/p1_mcp2dwh/&quot;
+}
+
+ddir &lt;- &quot;../../dat/p1_mcp2dwh/&quot;
 read_from_tag(ddir = ddir )</code></pre>
 <pre><code>##  [1] &quot;admit&quot;   &quot;dis&quot;     &quot;injt&quot;    &quot;lab&quot;     &quot;mrdr&quot;    &quot;ope&quot;     &quot;opeplan&quot;
 ##  [8] &quot;prs&quot;     &quot;prst&quot;    &quot;ptbase&quot;  &quot;pthrp&quot;   &quot;ptprof&quot;  &quot;ri&quot;      &quot;rtx&quot;    
 ## [15] &quot;somat&quot;   &quot;vital&quot;</code></pre>
-<pre class="r"><code>d_iji &lt;- &quot;../../dat/p0_ijikaikei_dat/&quot;
-fs &lt;- list.files(d_iji, pattern = &quot;xlsx&quot;, full.names = T)  %&gt;%
-    .[str_detect(.,&quot;期間指定&quot;)]
-fs</code></pre>
-<pre><code>##  [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200501-200603.xlsx&quot;
-##  [2] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200604-200703.xlsx&quot;
-##  [3] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200704-200803.xlsx&quot;
-##  [4] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200804-200903.xlsx&quot;
-##  [5] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200904-201003.xlsx&quot;
-##  [6] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201004-201103.xlsx&quot;
-##  [7] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201104-201203.xlsx&quot;
-##  [8] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201204-201303.xlsx&quot;
-##  [9] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201304-201403.xlsx&quot;
-## [10] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201404-201503.xlsx&quot;
-## [11] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201504-201604.xlsx&quot;
-## [12] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201605-202301.xlsx&quot;</code></pre>
-<pre class="r"><code>fs_new &lt;- fs %&gt;%
-    .[str_detect(., &quot;201605-202301&quot;)]
-fs_new</code></pre>
-<pre><code>## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201605-202301.xlsx&quot;</code></pre>
-<pre class="r"><code>fs_old &lt;- fs %&gt;%
-    .[!str_detect(., &quot;201605-202301&quot;)]
-fs_old</code></pre>
-<pre><code>##  [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200501-200603.xlsx&quot;
-##  [2] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200604-200703.xlsx&quot;
-##  [3] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200704-200803.xlsx&quot;
-##  [4] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200804-200903.xlsx&quot;
-##  [5] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200904-201003.xlsx&quot;
-##  [6] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201004-201103.xlsx&quot;
-##  [7] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201104-201203.xlsx&quot;
-##  [8] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201204-201303.xlsx&quot;
-##  [9] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201304-201403.xlsx&quot;
-## [10] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201404-201503.xlsx&quot;
-## [11] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201504-201604.xlsx&quot;</code></pre>
-<pre class="r"><code>df_new &lt;- data.frame()
-for (f in fs_new){
-    print(f)
-    df_i &lt;- read.xlsx(f)
-    df_new &lt;- rbind(df_new, df_i)
-}</code></pre>
-<pre><code>## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201605-202301.xlsx&quot;</code></pre>
-<pre class="r"><code>df_new &lt;- df_new %&gt;%
-    dplyr::select(&#39;DT_YMD&#39;, &#39;PT_ID&#39;, &#39;PT_NAME&#39;, &#39;FC_KCODE&#39;, &#39;VC_NAME&#39;)  %&gt;%
-    mutate(date = as.Date(DT_YMD, origin = &quot;1899-12-30&quot;))</code></pre>
-<pre class="r"><code>df_old &lt;- data.frame()
-for (f in fs_old){
-    print(f)
-    df_i &lt;- read.xlsx(f)
-    df_old &lt;- rbind(df_old, df_i)
-}</code></pre>
-<pre><code>## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200501-200603.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200604-200703.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200704-200803.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200804-200903.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_200904-201003.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201004-201103.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201104-201203.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201204-201303.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201304-201403.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201404-201503.xlsx&quot;
-## [1] &quot;../../dat/p0_ijikaikei_dat//Q03_期間指定_201504-201604.xlsx&quot;</code></pre>
-<pre class="r"><code>df_old &lt;- df_old %&gt;%
-    dplyr::select(one_of(c(&#39;TK01&#39;, &#39;PT_ID&#39;, &#39;PT_NAME&#39;, &#39;TK35&#39;, &#39;VC_NAME&#39;))) %&gt;%
-    rename(DT_YMD = TK01, FC_KCODE=TK35) %&gt;%
-    mutate(date = lubridate::ymd(DT_YMD))
+</div>
+<div id="from-path-rep" class="section level1">
+<h1>from path rep</h1>
+<pre class="r"><code>df_pth  &lt;- read_from_tag(ddir, &quot;pthrp&quot;)</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh//pthrp_col56_20230708_090958_638858.csv.bz2&quot;
+## [1] 56</code></pre>
+<pre class="r"><code>df_rasraf &lt;- df_pth %&gt;%
+    mutate(DIAGNOSIS = stringi::stri_trans_nfkc(DIAGNOSIS) %&gt;%
+        tolower() %&gt;%
+        str_replace_all(&quot;&lt;br/&gt;&quot;, &quot;\n&quot;)) %&gt;%
+    filter(str_detect(DIAGNOSIS, &quot;ras|raf&quot;)) %&gt;%
+    dplyr::select(PT_ID, REPORT_DATE,DIAGNOSIS ) %&gt;%
+    separate_rows(DIAGNOSIS,  sep = &quot;\n|。&quot;, convert = FALSE) %&gt;%
+    filter(str_detect(DIAGNOSIS, &quot;ras|raf&quot;)) %&gt;%
+    mutate(DIAGNOSIS = DIAGNOSIS  %&gt;%
+        str_replace_all(&quot;コドン&quot;, &quot;codon&quot;) %&gt;%
+        str_replace_all(&quot;陰性&quot;, &quot;(-)&quot;)) %&gt;%
+    group_by(PT_ID, REPORT_DATE) %&gt;%
+    mutate(whole_snt = str_c(DIAGNOSIS, sep=&quot;\n&quot;, collapse = &quot;\n&quot;))</code></pre>
+<pre class="r"><code>tagx &lt;- c(
+&quot; braf v600e&quot;,
+&quot; nras g12d&quot;,
+&quot; kras g12a&quot;,
+&quot; kras g12d&quot;,
+&quot; kras g12s&quot;,
+&quot; kras g12v&quot;,
+&quot; kras g13c&quot;,
+&quot; kras g13d&quot;,
+&quot; kras q61h, q61h&quot;,
+&quot; kras a146t&quot;,
+&quot; braf exoc4-braf fusion&quot;,
+&quot;kras codon12 g12a&quot;,
+&quot;kras codon12 g12d&quot;
+)
+df_check &lt;- df_rasraf %&gt;%
+    filter(DIAGNOSIS %in% tagx) %&gt;%
+    left_join(df_pth, by=c(&quot;PT_ID&quot;, &quot;REPORT_DATE&quot;))
+# df_check </code></pre>
+<pre class="r"><code>tagx &lt;- c(
+&quot; braf v600e&quot;,
+&quot; nras g12d&quot;,
+&quot; kras g12a&quot;,
+&quot; kras g12d&quot;,
+&quot; kras g12s&quot;,
+&quot; kras g12v&quot;,
+&quot; kras g13c&quot;,
+&quot; kras g13d&quot;,
+&quot; kras q61h, q61h&quot;,
+&quot; kras a146t&quot;,
+&quot; braf exoc4-braf fusion&quot;,
+&quot;kras codon12 g12a&quot;,
+&quot;kras codon12 g12d&quot;
+)
+df_check &lt;- df_rasraf %&gt;%
+    filter(DIAGNOSIS %in% tagx) %&gt;%
+    left_join(df_pth, by=c(&quot;PT_ID&quot;, &quot;REPORT_DATE&quot;))
+# df_check </code></pre>
+<pre class="r"><code>df_rasraf_smr &lt;- df_rasraf%&gt;%
+    group_by(DIAGNOSIS) %&gt;%
+    summarize(n=n()) %&gt;%
+    mutate(is_detect = str_detect(DIAGNOSIS, &quot;陽性|positive|cytoplasmic overexpression&quot;) | DIAGNOSIS %in% tagx) %&gt;%
+    mutate(is_kras = str_detect(DIAGNOSIS, &quot;kras&quot;),
+           is_nras = str_detect(DIAGNOSIS, &quot;nras&quot;),
+           is_braf = str_detect(DIAGNOSIS, &quot;braf&quot;),
+           is_doubt = str_detect(DIAGNOSIS, &quot;疑陽性|equivocal|陽性所見は認めません&quot;)) %&gt;%
+    arrange(is_doubt, is_kras, is_nras, is_doubt) </code></pre>
+<pre class="r"><code>df_rasraf &lt;- df_rasraf %&gt;%
+        mutate(is_detect = str_detect(DIAGNOSIS, &quot;陽性|positive|cytoplasmic overexpression&quot;) | DIAGNOSIS %in% tagx) %&gt;%
+    mutate(is_kras = str_detect(DIAGNOSIS, &quot;kras&quot;),
+           is_nras = str_detect(DIAGNOSIS, &quot;nras&quot;),
+           is_braf = str_detect(DIAGNOSIS, &quot;braf&quot;),
+           is_doubt = str_detect(DIAGNOSIS, &quot;疑陽性|equivocal|陽性所見は認めません&quot;)) %&gt;%
+    arrange(is_doubt, is_kras, is_nras, is_doubt) </code></pre>
+<pre class="r"><code>write.xlsx(df_rasraf_smr, &quot;./df_rasraf.xlsx&quot;)</code></pre>
+<pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_20231129_040508.rds&quot;
+df &lt;- readRDS(f)
 
-df_whole &lt;- bind_rows(df_new, df_old)</code></pre>
-<pre class="r"><code>df_ope &lt;- df_whole %&gt;%
- filter(!is.na(FC_KCODE)) %&gt;% 
-        filter(str_detect(FC_KCODE, &quot;^K&quot;)) %&gt;% 
-    filter(!str_detect(FC_KCODE, &quot;^K[0-49].&quot;))
+f_innaigan_smr_rds &lt;- &quot;../../dat/p1_mcp2dwh/df_innnaigan_smr_20231129_040508.rds&quot;
+df_innaigan_smr &lt;- readRDS(f_innaigan_smr_rds)</code></pre>
+<pre class="r"><code>df_in &lt;- df %&gt;%
+    filter(PT_ID != &quot;00000090&quot;) %&gt;%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID) %&gt;%
+    filter(had_ex_cancer_1st_fill == 0) %&gt;%
+    filter(had_ex_adenocarci_fill == 0) %&gt;%
+    filter(had_unknown_cstage_1stcrc_fill == 0) %&gt;%
+    filter(without_3mkr == 0) %&gt;%
+    filter(with_hd_prestart == 0) %&gt;%
+    filter(have_pre_ex_prs == 0) %&gt;%
+    filter(have_pre_ex_inj == 0) %&gt;%
+    dplyr::select(PT_ID, dt_start) </code></pre>
+<pre class="r"><code>df_rasraf_in &lt;- df_rasraf%&gt;%
+    left_join(df_in, by=&quot;PT_ID&quot;) %&gt;%
+    filter(!is.na(dt_start)) %&gt;%
+    filter(!is_doubt) %&gt;%
+    filter(is_detect) %&gt;%
+    mutate(REPORT_DATE = lubridate::ymd(REPORT_DATE),
+           is_past_report = REPORT_DATE - dt_start &lt;= 0) </code></pre>
+<pre class="r"><code>df_rasraf_tabl &lt;- df_rasraf_in %&gt;%
+    ungroup() %&gt;%
+    dplyr::select(PT_ID, is_braf, is_kras, is_nras) %&gt;%
+    group_by(PT_ID) %&gt;%
+    summarise(
+        # n=n(),
+              kras_mutation = sum(is_kras),
+              nras_mutation = sum(is_nras),
+              braf_mutation = sum(is_braf))</code></pre>
+<pre class="r"><code>df_biom &lt;- df %&gt;%
+    left_join(df_rasraf_tabl, by= &quot;PT_ID&quot;)</code></pre>
+<pre class="r"><code>df_ptprof &lt;- read_from_tag(ddir, &#39;ptprof&#39;) %&gt;%
+    dplyr::select(PT_ID,DEATH_DATE,DEATH_FLG) %&gt;%
+    mutate(DEATH_DATE = lubridate::ymd(DEATH_DATE))</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh//ptprof_col24_20230704_051454_386123.csv.bz2&quot;
+## [1] 24</code></pre>
+<pre class="r"><code>pt_dead &lt;- df_ptprof %&gt;%
+    filter(DEATH_FLG == &quot;＋&quot;) %&gt;%
+    .[[&quot;PT_ID&quot;]]
 
-df_whole_na_data &lt;- df_whole %&gt;% 
-  filter(is.na(date))</code></pre>
-<pre class="r"><code>df_rad &lt;-  df_whole %&gt;%
- filter(!is.na(FC_KCODE)) %&gt;% 
-        filter(str_detect(FC_KCODE, &quot;^M&quot;))  %&gt;% 
-    filter(!str_detect(VC_NAME, &quot;加算&quot;)) %&gt;% 
-    filter(!str_detect(VC_NAME, &quot;管理料&quot;))</code></pre>
-<pre class="r"><code>df_ope_summary &lt;- df_ope %&gt;% 
-    group_by(FC_KCODE, VC_NAME) %&gt;% 
-    summarize(n=n()) %&gt;% 
-    arrange(-n) %&gt;% 
-    mutate(is_target = ifelse(str_detect(VC_NAME, &quot;加算&quot;), 0, 1))</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;FC_KCODE&#39;. You can override using the
+pt_dead %&gt;%
+    length()</code></pre>
+<pre><code>## [1] 304</code></pre>
+<pre class="r"><code>df_mrdr &lt;- read_from_tag(ddir, &#39;mrdr&#39;)</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh//mrdr_col18_20230704_051454_386123.csv.bz2&quot;
+## [1] 18</code></pre>
+<pre class="r"><code>df_mrdr_fl &lt;- df_mrdr %&gt;%
+    filter(str_detect(EMR_TEXT, &quot;R3856&quot;)) %&gt;%
+    filter(!PT_ID %in% pt_dead)</code></pre>
+<pre class="r"><code>df_mrdr_follow &lt;- df_mrdr_fl %&gt;%
+    mutate(lastfollow = str_extract(EMR_TEXT, &quot;20[0-9]*/[0-9]*/[0-9]*&quot;) %&gt;%
+        lubridate::ymd()) %&gt;%
+    dplyr::select(PT_ID, lastfollow)</code></pre>
+<pre class="r"><code>df_mrdr_follow %&gt;%
+    filter(is.na(lastfollow))</code></pre>
+<pre><code>## Empty data.table (0 rows and 2 cols): PT_ID,lastfollow</code></pre>
+<pre class="r"><code>df_biom_follow &lt;- df_biom %&gt;%
+    left_join(df_ptprof, by =&quot;PT_ID&quot;) %&gt;%
+    left_join(df_mrdr_follow, by=&quot;PT_ID&quot;)</code></pre>
+<pre class="r"><code>df_mrdr_rr_org &lt;-  df_mrdr  %&gt;%
+    mutate(EMR_TEXT = stringi::stri_trans_nfkc(EMR_TEXT) %&gt;%
+    tolower() %&gt;%
+    str_replace_all(&quot;&lt;br/&gt;&quot;, &quot;\n&quot;)) %&gt;%
+    filter(str_detect(EMR_TEXT, &quot;ras|raf&quot;)) %&gt;%
+    dplyr::select(KEY01, PT_ID, RECORD_DATE, EMR_TEXT) %&gt;%
+    separate_rows(EMR_TEXT,  sep = &quot;\n|。&quot;, convert = FALSE) %&gt;%
+    filter(str_detect(EMR_TEXT, &quot;ras|raf&quot;))</code></pre>
+<pre class="r"><code>get_index &lt;- function(x){
+    return(1:length(x))
+}
+
+get_ele &lt;- function(l, i){
+    return (l[[i]])
+}
+
+get_ele_v &lt;- Vectorize(FUN = get_ele, vectorize.args = c(&quot;l&quot;, &quot;i&quot;))</code></pre>
+<pre class="r"><code>## raf ras
+extratag &lt;- &quot;ras.{1,15}|raf.{1,15}&quot;
+excltag &lt;- c(
+    &quot; wt&quot;,
+    &quot;wild&quot;,
+    &quot;:陰性&quot;,
+    &quot;未&quot;,
+    &quot; status → 変異なし&quot;,
+    &quot; v600e\tn.a.&quot;,
+    &quot;変異無し&quot;
+)
+df_mrdr_rr &lt;-  df_mrdr_rr_org %&gt;%
+    mutate(s_ind = get_index(KEY01)) %&gt;%
+    mutate(org_text = EMR_TEXT) %&gt;%
+    group_by(KEY01,s_ind) %&gt;%
+    separate_rows(EMR_TEXT,  sep = &quot;ras|raf|ugt|egfr|msi|tmb&quot;, convert = FALSE) %&gt;%
+    mutate(k_ind = get_index(KEY01),
+           tag_vec = str_c(&quot;top&quot;, org_text, sep=&quot;&quot;) %&gt;%
+                str_extract_all(., &quot;top|ras|raf|ugt|egfr|msi|tmb&quot;)
+                ) %&gt;%
+    mutate(tag_str = get_ele_v(tag_vec, k_ind)) %&gt;%
+    filter(!tag_str %in% c(&quot;top&quot;,&quot;ugt&quot;,&quot;egfr&quot;,&quot;msi&quot;, &quot;tmb&quot;)) %&gt;%
+    filter(!EMR_TEXT %in% excltag) %&gt;%
+    filter(!str_detect(EMR_TEXT, &quot;wt|wild|未|陰性|(-)|mtならば|野生型|変異の有無|変異について|変異なし|negative|検出せず|検出なし|no overexpression|陽性所見は認めません|認めず|の変異|変異無し|なし|検索中&quot;)) %&gt;%
+    filter(!str_detect(EMR_TEXT, &quot;変異あれ|変異[がはものおなにおやけ依及確検解評追測報]|変異型なら|検査|オーダー|依頼|提出|判明|結果&quot;)) %&gt;%
+    mutate(is_desc_biom = str_detect(EMR_TEXT, &quot;mt|mut|g12|a146t|v600|変異|g13|陽性|q61|g14d|positive|gly12|q22|n581|d594|r684|\\(+\\)&quot;))</code></pre>
+<pre class="r"><code>df_mrdr_rr_smr &lt;- df_mrdr_rr %&gt;%
+    ungroup() %&gt;%
+    group_by(PT_ID, tag_str) %&gt;%
+    summarize(detection=sum(is_desc_biom)
+              )   %&gt;%
+    tidyr::pivot_wider(names_from = tag_str, values_from = detection) %&gt;%
+    mutate(have_ras_mutation_desc_mr = if_else(ras &gt; 0, 1, 0),
+           have_raf_mutation_desc_mr = if_else(raf &gt; 0, 1, 0))</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;PT_ID&#39;. You can override using the
 ## `.groups` argument.</code></pre>
-<pre class="r"><code>f_excel_out&lt;- &quot;./ope_record_temp.xlsx&quot;
-# write.xlsx(x = df_ope_summary,
-#            file = f_excel_out, overwrite = F)</code></pre>
-<pre class="r"><code>f_ope_mst &lt;- &quot;./ope_record_temp_fix2.xlsx&quot;
-df_ope_mst &lt;- read.xlsx(f_ope_mst) %&gt;%
-    mutate(is_end = str_detect(VC_NAME, &quot;内視鏡的&quot;),
-           is_cr = str_detect(VC_NAME, &quot;腸|リンパ節群郭清|骨盤内臓全摘|肛門悪性腫瘍&quot;) &amp; !str_detect(VC_NAME, &quot;内視鏡的&quot;),
-           is_liver = str_detect(VC_NAME, &quot;肝&quot;),
-           is_lung = str_detect(VC_NAME, &quot;肺&quot;))
-
-df_ope_mst %&gt;%
-    filter(is_target == 1) %&gt;%
-    filter(!is_end &amp; !is_cr &amp; !is_liver &amp; !is_lung)</code></pre>
-<pre><code>## [1] FC_KCODE  VC_NAME   n         is_target is_end    is_cr     is_liver 
-## [8] is_lung  
-## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
-<pre class="r"><code>df_ope_mst %&gt;%
-    filter(is_target == 1) %&gt;%
-    filter(is_end &amp; is_cr)</code></pre>
-<pre><code>## [1] FC_KCODE  VC_NAME   n         is_target is_end    is_cr     is_liver 
-## [8] is_lung  
-## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
-<pre class="r"><code>df_ope_mst %&gt;%
-    filter(is_target == 1) %&gt;%
-    group_by(is_end, is_cr, is_liver, is_lung) %&gt;%
-    summarise(n=n())</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;is_end&#39;, &#39;is_cr&#39;, &#39;is_liver&#39;. You can
+<pre class="r"><code>df_mrdr_rr_smr %&gt;%
+    .[[&quot;PT_ID&quot;]] %&gt;%
+    duplicated() %&gt;%
+    sum()</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>df_mrdr_rr %&gt;%
+    ungroup() %&gt;%
+    group_by(EMR_TEXT, is_desc_biom, tag_str) %&gt;%
+    summarize(n=n()) %&gt;%
+    write.xlsx(&quot;mrdr_biom.xlsx&quot;)</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;EMR_TEXT&#39;, &#39;is_desc_biom&#39;. You can
 ## override using the `.groups` argument.</code></pre>
-<pre><code>## # A tibble: 4 × 5
-## # Groups:   is_end, is_cr, is_liver [4]
-##   is_end is_cr is_liver is_lung     n
-##   &lt;lgl&gt;  &lt;lgl&gt; &lt;lgl&gt;    &lt;lgl&gt;   &lt;int&gt;
-## 1 FALSE  FALSE FALSE    TRUE       15
-## 2 FALSE  FALSE TRUE     FALSE      24
-## 3 FALSE  TRUE  FALSE    FALSE      25
-## 4 TRUE   FALSE FALSE    FALSE       2</code></pre>
-<pre class="r"><code>df_ope_with_annot &lt;- df_ope %&gt;%
-    dplyr::left_join(df_ope_mst, by =c(&quot;FC_KCODE&quot;, &quot;VC_NAME&quot;)) %&gt;%
-    filter(is_target == 1)  %&gt;%
-    dplyr::select(-n) %&gt;%
-    mutate(categ = case_when(
-        is_end~ &quot;endo_tx&quot;,
-        is_cr ~ &quot;colrec_sx&quot;,
-        is_liver ~ &quot;liv_sx&quot;,
-        is_lung ~ &quot;lng_sx&quot;,
-        T~&quot;notmatched&quot;))</code></pre>
-<pre class="r"><code>df_zero &lt;- expand.grid(PT_ID = df_ope_with_annot$PT_ID %&gt;% unique(),
-                       categ = df_ope_with_annot$categ %&gt;% unique()) %&gt;%
-    mutate(date = lubridate::ymd(&quot;1970-1-1&quot;),
-           is_target = 0)</code></pre>
-<pre class="r"><code>df_ope_with_annot_cumsum &lt;- df_ope_with_annot %&gt;%
-    bind_rows(df_zero) %&gt;%
-    arrange(PT_ID, date) %&gt;%
-    tidyr::complete(nesting(PT_ID, date), categ, fill=list(is_target = 0)) %&gt;%
-    dplyr::select(PT_ID, date, categ, is_target) %&gt;%
-# Without &quot;distinct&quot; here, an error will occur if the same category exists twice on the same day.
-    distinct() %&gt;%
-    arrange(PT_ID, date) %&gt;%
-    group_by(PT_ID, categ) %&gt;%
-    mutate(is_target = cumsum(is_target)) %&gt;%
-    ungroup() %&gt;%
-    pivot_wider(names_from = categ, values_from = is_target)</code></pre>
-<pre class="r"><code>rtx_ex &lt;- c(&quot;M004&quot;,&quot;M0042ｲ&quot;,&quot;M005&quot;)
-df_rad %&gt;%
-    filter(FC_KCODE %in% rtx_ex) %&gt;%
-    group_by(FC_KCODE, VC_NAME) %&gt;%
-    summarise(n= n())</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;FC_KCODE&#39;. You can override using the
-## `.groups` argument.</code></pre>
-<pre><code>## # A tibble: 3 × 3
-## # Groups:   FC_KCODE [3]
-##   FC_KCODE VC_NAME                                                             n
-##   &lt;chr&gt;    &lt;chr&gt;                                                           &lt;int&gt;
-## 1 M004     高線量率イリジウム                                                  1
-## 2 M0042ｲ   密封小線源治療（腔内照射（高線量率イリジウム照射を行った場合）…     4
-## 3 M005     血液照射                                                          236</code></pre>
-<pre class="r"><code>df_rad_annot &lt;- df_rad %&gt;%
-    filter(!FC_KCODE %in% rtx_ex)  %&gt;%
-    dplyr::select(PT_ID, date) %&gt;%
-    distinct() %&gt;%
-    mutate(categ = &quot;rtx&quot;,
-           is_target = 1) %&gt;%
-    arrange(PT_ID, date)</code></pre>
-<pre class="r"><code>df_si_cumsum &lt;- df_ope_with_annot %&gt;%
-    dplyr::select(PT_ID, date, categ, is_target) %&gt;%
-    bind_rows(df_rad_annot) %&gt;%
-    bind_rows(df_zero) %&gt;%
-    arrange(PT_ID, date) %&gt;%
-    tidyr::complete(nesting(PT_ID, date), categ, fill=list(is_target = 0)) %&gt;%
-    dplyr::select(PT_ID, date, categ, is_target) %&gt;%
-# Without &quot;distinct&quot; here, an error will occur if the same category exists twice on the same day.
-    distinct() %&gt;%
-    arrange(PT_ID, date) %&gt;%
-    group_by(PT_ID, categ) %&gt;%
-    mutate(is_target = cumsum(is_target)) %&gt;%
-    ungroup() %&gt;%
-    pivot_wider(names_from = categ, values_from = is_target)</code></pre>
-<pre class="r"><code>f_out &lt;- c(&quot;../../dat/p8_si_premix/si_cumsum_&quot;, ts, &quot;.rds&quot;) %&gt;%
-    str_c(collapse = &quot;&quot;)
+<pre class="r"><code>df_biom_follow_mr &lt;- df_biom_follow %&gt;%
+    left_join(df_mrdr_rr_smr, by=&quot;PT_ID&quot;) %&gt;%
+    mutate(kras_mutation = if_else(is.na(kras_mutation),0, as.numeric(kras_mutation)),
+           nras_mutation = if_else(is.na(nras_mutation),0, as.numeric(nras_mutation)),
+           braf_mutation = if_else(is.na(braf_mutation),0, as.numeric(braf_mutation)),
+           have_ras_mutation_desc_mr = if_else(is.na(have_ras_mutation_desc_mr),0, have_ras_mutation_desc_mr),
+           have_raf_mutation_desc_mr = if_else(is.na(have_raf_mutation_desc_mr),0, have_raf_mutation_desc_mr),)</code></pre>
+<pre class="r"><code>df_biom_follow_mr &lt;- df_biom_follow_mr %&gt;%
+    mutate(cStage_fix = cStage %&gt;%
+               str_remove(&quot;[0-9]*：&quot;) %&gt;%
+               str_remove(&quot;[ABC1]*$&quot;),
+           cT_categ_fix = cT_categ %&gt;%
+               str_remove(&quot;[0-9]*：&quot;) %&gt;%
+               str_remove(&quot;[abc]*$&quot;) %&gt;%
+               str_replace(&quot;不明&quot;, &quot;TX&quot;),
+           cN_categ_fix = cN_categ %&gt;%
+               str_remove(&quot;[0-9]*：&quot;) %&gt;%
+               str_remove(&quot;[abc]*$&quot;) %&gt;%
+               str_replace(&quot;不明&quot;, &quot;NX&quot;),
+           cM_categ_fix = cM_categ %&gt;%
+               str_remove(&quot;[0-9]*：&quot;) %&gt;%
+               str_remove(&quot;[abc]*$&quot;) %&gt;%
+               str_replace(&quot;不明&quot;, &quot;MX&quot;),
+           diffgrade_fix = case_when(
+               str_detect(diffgrade, &quot;高分化&quot;) ~ &quot;well&quot;,
+               str_detect(diffgrade, &quot;中分化&quot;) ~ &quot;moderate&quot;,
+               str_detect(diffgrade, &quot;低分化&quot;) ~ &quot;poor&quot;,
+               str_detect(diffgrade, &quot;9：&quot;) ~ &quot;NA&quot;,
+                T ~ &quot;other&quot;) %&gt;%
+           factor(., levels = c(&quot;well&quot;, &quot;moderate&quot;, &quot;poor&quot;, &quot;NA&quot;)),
+           position_fix = case_when(
+               str_detect(position, &quot;_&quot;) ~ &quot;multiple&quot;,
+               str_detect(position, &quot;180|181|182|183&quot;) ~ &quot;right_side&quot;,
+               str_detect(position, &quot;184&quot;) ~ &quot;transverse&quot;,
+               str_detect(position, &quot;185|186|187&quot;) ~ &quot;left_side&quot;,
+               str_detect(position, &quot;199|209&quot;) ~ &quot;rectum&quot;,
+               T ~ &quot;other&quot;
+           ) %&gt;% factor(., levels = c(&quot;right_side&quot;, &quot;transverse&quot;, &quot;left_side&quot;, &quot;rectum&quot;, &quot;multiple&quot;, &quot;other&quot;)),
+           CEA_count = CEA,
+           CA19_9_count = `CA19-9`,
+           kras_mutation = if_else(kras_mutation == 1, &quot;detected&quot;, &quot;not_detected&quot;),
+           nras_mutation = if_else(nras_mutation == 1, &quot;detected&quot;, &quot;not_detected&quot;),
+           braf_mutation = if_else(braf_mutation == 1, &quot;detected&quot;, &quot;not_detected&quot;),
+           have_ras_mutation_desc_mr = if_else(have_ras_mutation_desc_mr == 1, &quot;descripted&quot;, &quot;not_descripted&quot;),
+           have_raf_mutation_desc_mr = if_else(have_raf_mutation_desc_mr == 1, &quot;descripted&quot;, &quot;not_descripted&quot;)
+    ) %&gt;% 
+    mutate(lastfollow = if_else(ex_index == 669, lubridate::ymd(&quot;2017-11-22&quot;), lastfollow)) %&gt;%
+    mutate(event = if_else(DEATH_FLG == &#39;＋&#39;, 1, 0),
+           lastfollow_fill = if_else(is.na(lastfollow), lubridate::ymd(&quot;1980-1-1&quot;), lastfollow),
+           DEATH_DATE_fill = if_else(is.na(DEATH_DATE), lubridate::ymd(&quot;1980-1-1&quot;), DEATH_DATE),
+           dt_start_fill = if_else(is.na(dt_start), lubridate::ymd(&quot;1980-1-1&quot;), dt_start),
+           lasttime = pmax(lastfollow_fill, DEATH_DATE_fill),
+           time_dt = lasttime - dt_start_fill,
+           time_y = time_dt %&gt;%
+        as.numeric(units = &quot;days&quot;)/365.25) %&gt;%
+    mutate(cStage_fix = ifelse(ex_index == 418, &quot;IV&quot;, cStage_fix)) %&gt;%
+    mutate(cStage_fix = ifelse(ex_index == 10, &quot;II&quot;, cStage_fix))</code></pre>
+<pre class="r"><code>df_biom_follow_mr %&gt;%
+        filter(PT_ID != &quot;00000090&quot;) %&gt;%
+    filter(PT_ID %in% df_innaigan_smr$PT_ID) %&gt;%
+    filter(had_ex_cancer_1st_fill == 0) %&gt;%
+    filter(had_ex_adenocarci_fill == 0) %&gt;%
+    filter(had_unknown_cstage_1stcrc_fill == 0) %&gt;%
+    filter(without_3mkr == 0) %&gt;%
+    filter(with_hd_prestart == 0) %&gt;%
+    filter(have_pre_ex_prs == 0) %&gt;%
+    filter(have_pre_ex_inj == 0) %&gt;%
+    dim()</code></pre>
+<pre><code>## [1] 614  47</code></pre>
+<pre class="r"><code>ts</code></pre>
+<pre><code>## [1] &quot;20240208_030027&quot;</code></pre>
+<pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_tsxx.xlsx&quot;
+f &lt;- f %&gt;%
+    str_replace(&quot;tsxx&quot;, ts)
+f2 &lt;- f %&gt;%
+    str_replace(&quot;.xlsx&quot;, &quot;_with_biomfollow_mr.rds&quot;)
 
-saveRDS(object = df_si_cumsum, file = f_out)
-
-f_out</code></pre>
-<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20231129_043515.rds&quot;</code></pre>
-<pre class="r"><code>f_out &lt;- f_out %&gt;%
-    str_replace_all(&quot;.rds&quot;, &quot;.xlsx&quot;)
-
-write.xlsx(x = df_si_cumsum,file = f_out)
-
-f_out</code></pre>
-<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20231129_043515.xlsx&quot;</code></pre>
+saveRDS(df_biom_follow_mr, f2)
+write.xlsx(df_biom_follow_mr, f)</code></pre>
+<pre class="r"><code>f2</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240208_030027_with_biomfollow_mr.rds&quot;</code></pre>
+<pre class="r"><code>f</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240208_030027.xlsx&quot;</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)
 ## Platform: x86_64-conda-linux-gnu (64-bit)
@@ -644,22 +771,24 @@ f_out</code></pre>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] openxlsx_4.2.5.2  data.table_1.14.8 lubridate_1.9.3   forcats_1.0.0    
-##  [5] stringr_1.5.0     dplyr_1.1.3       purrr_1.0.2       readr_2.1.4      
-##  [9] tidyr_1.3.0       tibble_3.2.1      ggplot2_3.4.4     tidyverse_2.0.0  
+##  [1] R.utils_2.12.2    R.oo_1.25.0       R.methodsS3_1.8.2 openxlsx_4.2.5.2 
+##  [5] IRdisplay_1.1     data.table_1.14.8 lubridate_1.9.3   forcats_1.0.0    
+##  [9] stringr_1.5.0     dplyr_1.1.3       purrr_1.0.2       readr_2.1.4      
+## [13] tidyr_1.3.0       tibble_3.2.1      ggplot2_3.4.4     tidyverse_2.0.0  
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] zip_2.3.0         Rcpp_1.0.11       bslib_0.5.1       compiler_4.2.3   
-##  [5] pillar_1.9.0      jquerylib_0.1.4   tools_4.2.3       digest_0.6.33    
-##  [9] timechange_0.2.0  jsonlite_1.8.7    evaluate_0.22     lifecycle_1.0.3  
-## [13] gtable_0.3.4      pkgconfig_2.0.3   rlang_1.1.1       cli_3.6.1        
-## [17] rstudioapi_0.15.0 yaml_2.3.7        xfun_0.40         fastmap_1.1.1    
-## [21] withr_2.5.1       knitr_1.44        hms_1.1.3         generics_0.1.3   
-## [25] sass_0.4.7        vctrs_0.6.4       grid_4.2.3        tidyselect_1.2.0 
-## [29] glue_1.6.2        R6_2.5.1          fansi_1.0.5       rmarkdown_2.25   
-## [33] tzdb_0.4.0        magrittr_2.0.3    scales_1.2.1      htmltools_0.5.6.1
-## [37] colorspace_2.1-0  utf8_1.2.4        stringi_1.7.12    munsell_0.5.0    
-## [41] cachem_1.0.8</code></pre>
+##  [1] tidyselect_1.2.0  xfun_0.40         bslib_0.5.1       repr_1.1.6       
+##  [5] colorspace_2.1-0  vctrs_0.6.4       generics_0.1.3    htmltools_0.5.6.1
+##  [9] yaml_2.3.7        base64enc_0.1-3   utf8_1.2.4        rlang_1.1.1      
+## [13] jquerylib_0.1.4   pillar_1.9.0      glue_1.6.2        withr_2.5.1      
+## [17] lifecycle_1.0.3   munsell_0.5.0     gtable_0.3.4      zip_2.3.0        
+## [21] evaluate_0.22     knitr_1.44        tzdb_0.4.0        fastmap_1.1.1    
+## [25] fansi_1.0.5       Rcpp_1.0.11       scales_1.2.1      cachem_1.0.8     
+## [29] jsonlite_1.8.7    hms_1.1.3         digest_0.6.33     stringi_1.7.12   
+## [33] grid_4.2.3        cli_3.6.1         tools_4.2.3       magrittr_2.0.3   
+## [37] sass_0.4.7        pkgconfig_2.0.3   timechange_0.2.0  rmarkdown_2.25   
+## [41] rstudioapi_0.15.0 R6_2.5.1          compiler_4.2.3</code></pre>
+</div>
 
 
 
