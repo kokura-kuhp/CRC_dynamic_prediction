@@ -9,38 +9,31 @@ However, conventionial Cox proportional hazards model is based on fixed-point in
 In this study, clinical data was extracted from Data Warehouse, receipt information, and hospital-based cancer registry in order to colloect patient information comprehensively and efficiently. Each files used in the analysis is described below.
 
 # p01_dwh2table1
-## p01_dwh2table_03_pts__ex_list.Rmd
 
-Handling eligible patient from DWH
+1. Handling eligible patient from DWH
 
-## p01_dwh2table1_04_mdmr_path_suv.Rmd
+2. Extracting last-followup date from electoronic medical record
 
-Extracting last-followup date from electoronic medical record
-
-## p01_dwf2table1_05_table1.Rmd
-
-Summarizing patient characteristics in Table 1
+3. Summarizing patient characteristics in Table 1
 
 # p02_data_handling
-## p02_data_handling_si.Rmd
 
-Handling data on procedures from receipt information
+1. Handling data on procedures from receipt information
 
-## p02_data_handling.Rmd
-
-Handling clinical data from DWH 
+2. Handling clinical data from DWH 
 
 # p03_modeling
-## p03_modeling.Rmd
 
 Performing Cox proportional hazards model, mixed effect model and Joint model
 
 # p04_eval_models
-## p04_eval_model.Rmd
 
 Comparison between measured CEA and predicted CEA
 
 Copmarison between Cox proportional hazards model and Joint model
 
-Case presentatioins
+Case presentatioin
 
+# p05_validation
+
+The number of patients who received each treatment
