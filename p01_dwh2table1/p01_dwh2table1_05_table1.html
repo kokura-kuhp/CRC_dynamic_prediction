@@ -494,8 +494,8 @@ display: none;
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240208_030152&quot;</code></pre>
-<pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_20231129_041517_with_biomfollow_mr.rds&quot;
+<pre><code>## [1] &quot;20240402_072938&quot;</code></pre>
+<pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240331_041211_with_biomfollow_mr.rds&quot;
 
 df &lt;- readRDS(f)
 
@@ -516,7 +516,8 @@ df_in %&gt;%
     filter(time_dt &lt; 0)  %&gt;%
     dim()</code></pre>
 <pre><code>## [1]  0 47</code></pre>
-<pre class="r"><code>tb1 &lt;- table1(~age_at_start+gender+cT_categ_fix+cN_categ_fix+cM_categ_fix+diffgrade_fix+position_fix+CEA_count|cStage_fix,
+<pre class="r"><code>tb1 &lt;- table1(~age_at_start + gender + cT_categ_fix + cN_categ_fix + cM_categ_fix + 
+                diffgrade_fix + position_fix + CEA_count | cStage_fix,
              data=df_in)
 
 tb1</code></pre>
@@ -741,12 +742,20 @@ tb1</code></pre>
 <td class="firstrow"></td>
 </tr>
 <tr>
-<td class="rowlabel">right_side</td>
-<td>6 (8.5%)</td>
-<td>15 (15.5%)</td>
-<td>35 (15.8%)</td>
-<td>38 (17.0%)</td>
-<td>94 (15.3%)</td>
+<td class="rowlabel">ileocecal</td>
+<td>1 (1.4%)</td>
+<td>5 (5.2%)</td>
+<td>5 (2.3%)</td>
+<td>13 (5.8%)</td>
+<td>24 (3.9%)</td>
+</tr>
+<tr>
+<td class="rowlabel">ascending</td>
+<td>5 (7.0%)</td>
+<td>10 (10.3%)</td>
+<td>30 (13.5%)</td>
+<td>25 (11.2%)</td>
+<td>70 (11.4%)</td>
 </tr>
 <tr>
 <td class="rowlabel">transverse</td>
@@ -757,12 +766,20 @@ tb1</code></pre>
 <td>41 (6.7%)</td>
 </tr>
 <tr>
-<td class="rowlabel">left_side</td>
-<td>20 (28.2%)</td>
-<td>27 (27.8%)</td>
-<td>53 (23.9%)</td>
-<td>75 (33.5%)</td>
-<td>175 (28.5%)</td>
+<td class="rowlabel">descending</td>
+<td>3 (4.2%)</td>
+<td>6 (6.2%)</td>
+<td>10 (4.5%)</td>
+<td>5 (2.2%)</td>
+<td>24 (3.9%)</td>
+</tr>
+<tr>
+<td class="rowlabel">sigmoid</td>
+<td>17 (23.9%)</td>
+<td>21 (21.6%)</td>
+<td>43 (19.4%)</td>
+<td>70 (31.3%)</td>
+<td>151 (24.6%)</td>
 </tr>
 <tr>
 <td class="rowlabel">rectum</td>
@@ -820,7 +837,7 @@ tb1</code></pre>
               &quot;.xlsx&quot;) %&gt;%
     str_c(collapse = &quot;&quot;)
 f_table1</code></pre>
-<pre><code>## [1] &quot;./table1_20240208_030152.xlsx&quot;</code></pre>
+<pre><code>## [1] &quot;./table1_20240402_072938.xlsx&quot;</code></pre>
 <pre class="r"><code>tb1 %&gt;%
     as.data.frame() %&gt;%
     write.xlsx(file = f_table1)</code></pre>

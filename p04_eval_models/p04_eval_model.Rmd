@@ -108,7 +108,7 @@ ts
 
 # load files
 ```{r}
-f_rds <- "../p03_modeling/dat/eval_list_20231129_045235.rds"
+f_rds <- "../p03_modeling/dat/eval_list_20240402_090057.rds"
 readRDS(f_rds) %>%
   get_vals()
 ```
@@ -140,7 +140,40 @@ df_mix_predict_sub <- df_mix_predict %>%
 df_mix_predict_sub
 ```
 
-# Case presentation
+# Clinical Case Presentation.1
+```{r}
+options(repr.plot.width=6, repr.plot.height=6)
+
+fig_pred_83 <- ggplot() + theme_pubr(base_size = 15, base_family = "Times") +
+  geom_line(aes(x = year_samp_from_start, y = xx, color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ], 
+                color = "red")+
+  geom_point(aes(x = year_samp_from_start, y = log2(CEA), color = id),
+                data = df_mix_predict[df_mix_predict$id %in% c(83:83), ],
+                size = 0.8, color = "black")+
+  coord_cartesian(xlim = c(0, 8),ylim = c(-1,4), expand = T) + 
+  xlab("years") + ylab("log2(CEA)")
+        
+plot(fig_pred_83)
+
+ggsave2_tri(fig_pred_83)
+```
+
+# Clinical Case Presentation.1-survival probability
+```{r}
+d_83 <- df_mix_predict %>% 
+  filter(id ==83)
+
+#time = 5, 10, 15, 20
+par(mfrow = c(2, 2))
+for (i in c(5, 10, 15, 20) ) {
+  sfit83_i <- survfitJM(fit_JM_cea, newdata = d_83[1:i, ], idVar = "id")
+  fig83<- plot(sfit83_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
+       col.area="lightblue", main="Patient 83", ask = F)
+}
+```
+
+# Clinical Case Presentation.2
 ```{r}
 options(repr.plot.width=6, repr.plot.height=6)
 
@@ -159,7 +192,7 @@ plot(fig_pred_317)
 ggsave2_tri(fig_pred_317, wid = 18, hei=9)
 ```
 
-# Case presentation-survival probability
+# Clinical Case Presentation.2-survival probability
 ```{r}
 d_317 <- df_mix_predict %>% 
   filter(id == 317)
@@ -167,7 +200,7 @@ d_317 <- df_mix_predict %>%
 #time = 25, 50, 75, 100
 par(mfrow = c(2, 2))
 fig_317 <- for (i in c(25, 50, 75, 100) ) {
-  sfit317_i <- survfitJM(fit_JM_cea, newdata = d_317[1:i, ], idVar = "id") 
+  sfit317_i <- survfitJM(fit_JM_cea, newdata = d_317[1:i, ], idVar = "id")
   plot317_i <- plot(sfit317_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
        col.area="lightblue", main="Patient 317", ask = F)
 }

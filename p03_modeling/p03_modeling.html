@@ -469,12 +469,13 @@ sv2ggkm &lt;- function(svfit, df){
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240208_030938&quot;</code></pre>
+<pre><code>## [1] &quot;20240402_093515&quot;</code></pre>
 </div>
 <div id="read-each-file" class="section level1">
 <h1>read each file</h1>
-<pre class="r"><code>f_cox_rds &lt;- &quot;../p03_modeling/df_cox_20231129_044447.rds&quot;
-f_mix_rds &lt;- &quot;../p03_modeling/df_mix_20231129_044447.rds&quot;
+<pre class="r"><code>f_cox_rds &lt;- &quot;../p03_modeling/df_cox_20240402_073922.rds&quot;
+f_mix_rds &lt;- &quot;../p03_modeling/df_mix_20240402_073922.rds&quot;
+
 
 fix_df &lt;- function(df){
   df %&gt;% 
@@ -482,12 +483,15 @@ fix_df &lt;- function(df){
              as.numeric()) %&gt;%
     mutate(is_well = if_else(is.na(diffgrade_fix), &quot;&quot;,as.character(diffgrade_fix))  %&gt;%
              magrittr::equals(&quot;well&quot;)) %&gt;%
-    mutate(is_right = position_fix == &quot;right_side&quot;|position_fix == &quot;multiple&quot;) %&gt;% 
+    mutate(is_right = position_fix == &quot;ileocecal&quot;|
+             position_fix == &quot;ascending&quot;|
+             position_fix == &quot;transverse&quot;|
+             position_fix == &quot;multiple&quot;) %&gt;% 
     mutate(gender = if_else(gender == &quot;1&quot;,1, 0 )) %&gt;% 
     return()
 }
 
-df_cox &lt;- readRDS(f_cox_rds) %&gt;%
+df_cox &lt;- readRDS(f_cox_rds)%&gt;%
   fix_df()
 
 df_mix &lt;- readRDS(f_mix_rds) %&gt;%
@@ -514,35 +518,35 @@ summary(fit_cox)</code></pre>
 ##   n= 614, number of events= 195 
 ## 
 ##                   coef exp(coef)  se(coef)      z Pr(&gt;|z|)    
-## age_at_start  0.025308  1.025631  0.006478  3.907 9.34e-05 ***
-## Stage         0.671198  1.956581  0.110533  6.072 1.26e-09 ***
-## is_wellTRUE  -0.077578  0.925355  0.170592 -0.455 0.649284    
-## gender        0.040700  1.041540  0.150237  0.271 0.786461    
-## is_rightTRUE -0.091319  0.912727  0.212483 -0.430 0.667364    
-## log2(CEA)     0.098374  1.103375  0.025655  3.835 0.000126 ***
+## age_at_start  0.024012  1.024303  0.006556  3.662  0.00025 ***
+## Stage         0.659118  1.933087  0.110759  5.951 2.67e-09 ***
+## is_wellTRUE  -0.084367  0.919094  0.170271 -0.495  0.62026    
+## gender        0.074608  1.077462  0.152479  0.489  0.62463    
+## is_rightTRUE  0.147824  1.159309  0.178439  0.828  0.40743    
+## log2(CEA)     0.102016  1.107401  0.025645  3.978 6.95e-05 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ##              exp(coef) exp(-coef) lower .95 upper .95
-## age_at_start    1.0256     0.9750    1.0127     1.039
-## Stage           1.9566     0.5111    1.5755     2.430
-## is_wellTRUE     0.9254     1.0807    0.6624     1.293
-## gender          1.0415     0.9601    0.7759     1.398
-## is_rightTRUE    0.9127     1.0956    0.6018     1.384
-## log2(CEA)       1.1034     0.9063    1.0493     1.160
+## age_at_start    1.0243     0.9763    1.0112     1.038
+## Stage           1.9331     0.5173    1.5559     2.402
+## is_wellTRUE     0.9191     1.0880    0.6583     1.283
+## gender          1.0775     0.9281    0.7991     1.453
+## is_rightTRUE    1.1593     0.8626    0.8172     1.645
+## log2(CEA)       1.1074     0.9030    1.0531     1.164
 ## 
-## Concordance= 0.725  (se = 0.02 )
-## Likelihood ratio test= 107.1  on 6 df,   p=&lt;2e-16
-## Wald test            = 95.87  on 6 df,   p=&lt;2e-16
-## Score (logrank) test = 105  on 6 df,   p=&lt;2e-16</code></pre>
+## Concordance= 0.729  (se = 0.019 )
+## Likelihood ratio test= 107.6  on 6 df,   p=&lt;2e-16
+## Wald test            = 96.3  on 6 df,   p=&lt;2e-16
+## Score (logrank) test = 105.7  on 6 df,   p=&lt;2e-16</code></pre>
 <pre class="r"><code>exp(confint(fit_cox, level = 0.95, process = &quot;Event&quot;))</code></pre>
 <pre><code>##                  2.5 %   97.5 %
-## age_at_start 1.0126924 1.038736
-## Stage        1.5754768 2.429873
-## is_wellTRUE  0.6623689 1.292756
-## gender       0.7758796 1.398163
-## is_rightTRUE 0.6018317 1.384225
-## log2(CEA)    1.0492667 1.160274</code></pre>
+## age_at_start 1.0112247 1.037550
+## Stage        1.5558700 2.401760
+## is_wellTRUE  0.6583023 1.283201
+## gender       0.7991185 1.452756
+## is_rightTRUE 0.8171693 1.644700
+## log2(CEA)    1.0531158 1.164484</code></pre>
 </div>
 <div id="mixed-effects-model" class="section level1">
 <h1>mixed effects model</h1>
@@ -642,53 +646,53 @@ summary(fit_JM_cea)</code></pre>
 ## Parameterization: Time-dependent 
 ## 
 ##    log.Lik      AIC      BIC
-##  -21292.31 42654.63 42809.33
+##  -21291.72 42653.45 42808.15
 ## 
 ## Variance Components:
 ##                       StdDev    Corr
-## (Intercept)           1.8977  (Intr)
-## year_samp_from_start  1.0638  0.3314
-## Residual              0.8466        
+## (Intercept)           1.8967  (Intr)
+## year_samp_from_start  1.0616  0.3316
+## Residual              0.8467        
 ## 
 ## Coefficients:
 ## Longitudinal Process
 ##                        Value Std.Err  z-value p-value
-## (Intercept)           3.0487  0.0681  44.7606 &lt;0.0001
-## year_samp_from_start  0.6401  0.0257  24.9230 &lt;0.0001
-## inj_Nivo              0.3899  0.1106   3.5235  0.0004
-## inj_OHP              -0.0631  0.0068  -9.3135 &lt;0.0001
-## inj_FU_LV            -0.0344  0.0049  -7.0469 &lt;0.0001
-## inj_IRI               0.0118  0.0048   2.4592  0.0139
-## inj_Pmab              0.0104  0.0055   1.8699  0.0615
-## inj_Bev              -0.0352  0.0043  -8.2425 &lt;0.0001
-## inj_Cmab             -0.0569  0.0071  -8.0552 &lt;0.0001
-## inj_AFL               0.1725  0.0154  11.1642 &lt;0.0001
-## inj_Rmab              0.0383  0.0131   2.9121  0.0036
-## inj_Pembro           -0.0794  0.0428  -1.8541  0.0637
-## prs_TS1               0.0164  0.0054   3.0370  0.0024
-## prs_Cape              0.0159  0.0029   5.5138 &lt;0.0001
-## prs_REG               0.0567  0.0075   7.5148 &lt;0.0001
-## prs_TAS102            0.1014  0.0058  17.5177 &lt;0.0001
-## prs_UFT              -0.0030  0.0055  -0.5352  0.5925
-## prs_BINI              0.1492  0.1060   1.4077  0.1592
-## si_colrec_sx         -0.8671  0.0332 -26.1488 &lt;0.0001
-## si_endo_tx            0.0458  0.0565   0.8099  0.4180
-## si_liv_sx            -0.9896  0.0317 -31.2608 &lt;0.0001
-## si_lng_sx            -0.2588  0.0419  -6.1828 &lt;0.0001
-## si_rtx               -0.0245  0.0023 -10.4484 &lt;0.0001
+## (Intercept)           3.0528  0.0682  44.7629 &lt;0.0001
+## year_samp_from_start  0.6352  0.0276  23.0303 &lt;0.0001
+## inj_Nivo              0.3899  0.1107   3.5235  0.0004
+## inj_OHP              -0.0631  0.0068  -9.3210 &lt;0.0001
+## inj_FU_LV            -0.0344  0.0049  -7.0510 &lt;0.0001
+## inj_IRI               0.0120  0.0048   2.4959  0.0126
+## inj_Pmab              0.0106  0.0056   1.8984  0.0576
+## inj_Bev              -0.0352  0.0043  -8.2368 &lt;0.0001
+## inj_Cmab             -0.0566  0.0071  -7.9390 &lt;0.0001
+## inj_AFL               0.1727  0.0155  11.1158 &lt;0.0001
+## inj_Rmab              0.0383  0.0131   2.9323  0.0034
+## inj_Pembro           -0.0790  0.0428  -1.8456  0.0650
+## prs_TS1               0.0164  0.0054   3.0563  0.0022
+## prs_Cape              0.0160  0.0029   5.5266 &lt;0.0001
+## prs_REG               0.0570  0.0075   7.5462 &lt;0.0001
+## prs_TAS102            0.1015  0.0058  17.5335 &lt;0.0001
+## prs_UFT              -0.0031  0.0056  -0.5532  0.5802
+## prs_BINI              0.1491  0.1060   1.4066  0.1595
+## si_colrec_sx         -0.8675  0.0332 -26.1548 &lt;0.0001
+## si_endo_tx            0.0440  0.0591   0.7452  0.4561
+## si_liv_sx            -0.9864  0.0319 -30.8991 &lt;0.0001
+## si_lng_sx            -0.2593  0.0428  -6.0599 &lt;0.0001
+## si_rtx               -0.0245  0.0023 -10.5313 &lt;0.0001
 ## 
 ## Event Process
 ##                Value Std.Err  z-value p-value
-## (Intercept)  -7.7853  0.6261 -12.4354 &lt;0.0001
-## age_at_start  0.0376  0.0068   5.5550 &lt;0.0001
-## Stage         0.1065  0.0971   1.0958  0.2731
-## is_wellTRUE  -0.1867  0.1744  -1.0707  0.2843
-## gender       -0.0725  0.1509  -0.4806  0.6308
-## is_rightTRUE  0.2382  0.2166   1.0998  0.2714
-## Assoct        0.4233  0.0227  18.6650 &lt;0.0001
-## log(shape)    0.1828  0.0642   2.8450  0.0044
+## (Intercept)  -7.7387  0.6290 -12.3032 &lt;0.0001
+## age_at_start  0.0363  0.0069   5.2725 &lt;0.0001
+## Stage         0.1037  0.0978   1.0602  0.2890
+## is_wellTRUE  -0.1851  0.1745  -1.0608  0.2888
+## gender       -0.0430  0.1534  -0.2800  0.7795
+## is_rightTRUE  0.2865  0.1820   1.5748  0.1153
+## Assoct        0.4237  0.0227  18.6810 &lt;0.0001
+## log(shape)    0.1804  0.0639   2.8216  0.0048
 ## 
-## Scale: 1.2006 
+## Scale: 1.1977 
 ## 
 ## Integration:
 ## method: (pseudo) adaptive Gauss-Hermite
@@ -698,36 +702,36 @@ summary(fit_JM_cea)</code></pre>
 ## Convergence: 0</code></pre>
 <pre class="r"><code>exp(confint(fit_JM_cea, level = 0.95, process = &quot;Event&quot;))</code></pre>
 <pre><code>##                               2.5 %         est.       97.5 %
-## Y.(Intercept)          1.845335e+01 2.108883e+01 24.100703791
-## Y.year_samp_from_start 1.803498e+00 1.896600e+00  1.994509183
-## Y.inj_Nivo             1.188865e+00 1.476779e+00  1.834417571
-## Y.inj_OHP              9.264710e-01 9.388546e-01  0.951403754
-## Y.inj_FU_LV            9.569806e-01 9.661815e-01  0.975470995
-## Y.inj_IRI              1.002393e+00 1.011841e+00  1.021378819
-## Y.inj_Pmab             9.995016e-01 1.010409e+00  1.021434680
-## Y.inj_Bev              9.573951e-01 9.654365e-01  0.973545485
-## Y.inj_Cmab             9.317321e-01 9.447150e-01  0.957878814
-## Y.inj_AFL              1.152804e+00 1.188244e+00  1.224774231
-## Y.inj_Rmab             1.012592e+00 1.039014e+00  1.066126171
-## Y.inj_Pembro           8.493810e-01 9.237083e-01  1.004539874
-## Y.prs_TS1              1.005823e+00 1.016507e+00  1.027303932
-## Y.prs_Cape             1.010288e+00 1.016006e+00  1.021757714
-## Y.prs_REG              1.042803e+00 1.058338e+00  1.074105700
-## Y.prs_TAS102           1.094208e+00 1.106690e+00  1.119313459
-## Y.prs_UFT              9.862955e-01 9.970443e-01  1.007910332
-## Y.prs_BINI             9.431521e-01 1.160869e+00  1.428843598
-## Y.si_colrec_sx         3.937164e-01 4.201559e-01  0.448370846
-## Y.si_endo_tx           9.370643e-01 1.046838e+00  1.169471200
-## Y.si_liv_sx            3.493769e-01 3.717398e-01  0.395534032
-## Y.si_lng_sx            7.111645e-01 7.719707e-01  0.837975981
-## Y.si_rtx               9.713784e-01 9.758443e-01  0.980330649
-## T.(Intercept)          1.219016e-04 4.158232e-04  0.001418431
-## T.age_at_start         1.024627e+00 1.038307e+00  1.052170557
-## T.Stage                9.194780e-01 1.112334e+00  1.345639688
-## T.is_wellTRUE          5.895290e-01 8.297017e-01  1.167720264
-## T.gender               6.918765e-01 9.300299e-01  1.250158908
-## T.is_rightTRUE         8.300423e-01 1.268913e+00  1.939828487
-## T.Assoct               1.460581e+00 1.526965e+00  1.596366312</code></pre>
+## Y.(Intercept)          1.852512e+01 2.117446e+01 24.202698456
+## Y.year_samp_from_start 1.787998e+00 1.887306e+00  1.992128958
+## Y.inj_Nivo             1.188899e+00 1.476866e+00  1.834583172
+## Y.inj_OHP              9.264927e-01 9.388645e-01  0.951401427
+## Y.inj_FU_LV            9.570358e-01 9.662210e-01  0.975494287
+## Y.inj_IRI              1.002571e+00 1.012031e+00  1.021579361
+## Y.inj_Pmab             9.996578e-01 1.010610e+00  1.021682107
+## Y.inj_Bev              9.574039e-01 9.654482e-01  0.973560139
+## Y.inj_Cmab             9.318133e-01 9.449345e-01  0.958240417
+## Y.inj_AFL              1.152821e+00 1.188456e+00  1.225192527
+## Y.inj_Rmab             1.012789e+00 1.039069e+00  1.066029917
+## Y.inj_Pembro           8.496107e-01 9.240035e-01  1.004910137
+## Y.prs_TS1              1.005903e+00 1.016544e+00  1.027296952
+## Y.prs_Cape             1.010349e+00 1.016081e+00  1.021846356
+## Y.prs_REG              1.043073e+00 1.058621e+00  1.074400996
+## Y.prs_TAS102           1.094364e+00 1.106854e+00  1.119487044
+## Y.prs_UFT              9.859698e-01 9.968948e-01  1.007940930
+## Y.prs_BINI             9.430360e-01 1.160769e+00  1.428772826
+## Y.si_colrec_sx         3.935725e-01 4.200072e-01  0.448217431
+## Y.si_endo_tx           9.307490e-01 1.045012e+00  1.173301592
+## Y.si_liv_sx            3.503098e-01 3.729277e-01  0.397005922
+## Y.si_lng_sx            7.095644e-01 7.716274e-01  0.839118709
+## Y.si_rtx               9.713691e-01 9.758066e-01  0.980264449
+## T.(Intercept)          1.269701e-04 4.356192e-04  0.001494558
+## T.age_at_start         1.023070e+00 1.036970e+00  1.051059024
+## T.Stage                9.157538e-01 1.109279e+00  1.343702247
+## T.is_wellTRUE          5.902642e-01 8.309922e-01  1.169896364
+## T.gender               7.092055e-01 9.579535e-01  1.293947864
+## T.is_rightTRUE         9.323132e-01 1.331814e+00  1.902501574
+## T.Assoct               1.461158e+00 1.527575e+00  1.597009530</code></pre>
 </div>
 <div id="load-and-save-functions" class="section level1">
 <h1>load and save functions</h1>
@@ -759,7 +763,7 @@ eval_list &lt;- list() %&gt;%
 f_eval_list &lt;- c(&quot;../p03_modeling/dat/eval_list_&quot;,ts, &quot;.rds&quot;) %&gt;% 
   str_c(collapse = &quot;&quot;)
 f_eval_list</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/dat/eval_list_20240208_030938.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../p03_modeling/dat/eval_list_20240402_093515.rds&quot;</code></pre>
 <pre class="r"><code>saveRDS(eval_list, file = f_eval_list)</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)

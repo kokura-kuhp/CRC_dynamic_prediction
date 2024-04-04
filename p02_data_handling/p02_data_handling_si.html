@@ -396,7 +396,7 @@ require(openxlsx)</code></pre>
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240208_030252&quot;</code></pre>
+<pre><code>## [1] &quot;20240402_073722&quot;</code></pre>
 <pre class="r"><code>read_from_tag &lt;- function(ddir, tag=NULL){
     if(is.null(tag)){
         tags &lt;- list.files(ddir, pattern = &quot;csv.bz2&quot;) %&gt;%
@@ -616,14 +616,14 @@ df_rad %&gt;%
 saveRDS(object = df_si_cumsum, file = f_out)
 
 f_out</code></pre>
-<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20240208_030252.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20240402_073722.rds&quot;</code></pre>
 <pre class="r"><code>f_out &lt;- f_out %&gt;%
     str_replace_all(&quot;.rds&quot;, &quot;.xlsx&quot;)
 
 write.xlsx(x = df_si_cumsum,file = f_out)
 
 f_out</code></pre>
-<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20240208_030252.xlsx&quot;</code></pre>
+<pre><code>## [1] &quot;../../dat/p8_si_premix/si_cumsum_20240402_073722.xlsx&quot;</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)
 ## Platform: x86_64-conda-linux-gnu (64-bit)

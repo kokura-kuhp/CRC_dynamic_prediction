@@ -350,12 +350,14 @@ df_biom_follow_mr <- df_biom_follow_mr %>%
            factor(., levels = c("well", "moderate", "poor", "NA")),
            position_fix = case_when(
                str_detect(position, "_") ~ "multiple",
-               str_detect(position, "180|181|182|183") ~ "right_side",
+               str_detect(position, "180|181") ~ "ileocecal",
+               str_detect(position, "182|183") ~ "ascending",
                str_detect(position, "184") ~ "transverse",
-               str_detect(position, "185|186|187") ~ "left_side",
+               str_detect(position, "185|186") ~ "descending",
+               str_detect(position, "187") ~ "sigmoid",
                str_detect(position, "199|209") ~ "rectum",
-               T ~ "other"
-           ) %>% factor(., levels = c("right_side", "transverse", "left_side", "rectum", "multiple", "other")),
+               T ~ "other") %>% 
+           factor(., levels = c("ileocecal", "ascending", "transverse", "descending", "sigmoid", "rectum", "multiple", "other")),
            CEA_count = CEA,
            CA19_9_count = `CA19-9`,
            kras_mutation = if_else(kras_mutation == 1, "detected", "not_detected"),

@@ -92,8 +92,9 @@ ts
 
 # read each file
 ```{r}
-f_cox_rds <- "../p03_modeling/df_cox_20231129_044447.rds"
-f_mix_rds <- "../p03_modeling/df_mix_20231129_044447.rds"
+f_cox_rds <- "../p03_modeling/df_cox_20240402_073922.rds"
+f_mix_rds <- "../p03_modeling/df_mix_20240402_073922.rds"
+
 
 fix_df <- function(df){
   df %>% 
@@ -101,12 +102,15 @@ fix_df <- function(df){
              as.numeric()) %>%
     mutate(is_well = if_else(is.na(diffgrade_fix), "",as.character(diffgrade_fix))  %>%
              magrittr::equals("well")) %>%
-    mutate(is_right = position_fix == "right_side"|position_fix == "multiple") %>% 
+    mutate(is_right = position_fix == "ileocecal"|
+             position_fix == "ascending"|
+             position_fix == "transverse"|
+             position_fix == "multiple") %>% 
     mutate(gender = if_else(gender == "1",1, 0 )) %>% 
     return()
 }
 
-df_cox <- readRDS(f_cox_rds) %>%
+df_cox <- readRDS(f_cox_rds)%>%
   fix_df()
 
 df_mix <- readRDS(f_mix_rds) %>%
@@ -169,7 +173,6 @@ fit_mix_cea <- lme(log2(CEA) ~ year_samp_from_start +
         random = ~ year_samp_from_start|id, data = df_mix_cea, control = lmeControl(opt = "optim"))
 
 summary(fit_mix_cea)$coef$fixed
-
 ```
 
 # Joint model

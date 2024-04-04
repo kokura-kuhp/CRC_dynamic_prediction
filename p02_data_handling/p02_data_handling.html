@@ -447,7 +447,7 @@ df_pts_somat &lt;- readRDS(f_pts_somat) %&gt;%
     mutate(in_date = as.Date(in_date, origin = &quot;1899-12-30&quot;))
 
 # df_pts
-f_pts &lt;- &#39;../../dat/p1_mcp2dwh/df_ex_pts_20231129_041815_with_biomfollow_mr.rds&#39;
+f_pts &lt;- &#39;../../dat/p1_mcp2dwh/df_ex_pts_20240331_041211_with_biomfollow_mr.rds&#39;
 df_pts &lt;- readRDS(f_pts)  %&gt;% 
     dplyr::select(-CEA, -`CA19-9`) %&gt;% 
     mutate(gender = if_else(gender == &quot;1：男&quot;, &quot;1&quot;, &quot;0&quot;))
@@ -463,7 +463,7 @@ df_prs &lt;- fread(f_prs) %&gt;%
     mutate(TAKING_START_DATE = as.Date(TAKING_START_DATE, origin = &quot;1899-12-30&quot;)) 
 
 # df_si
-f_si &lt;- &#39;../../dat/p8_si_premix/si_cumsum_20231129_043431.rds&#39;
+f_si &lt;- &#39;../../dat/p8_si_premix/si_cumsum_20240402_073722.rds&#39;
 df_si &lt;- readRDS(f_si)</code></pre>
 </div>
 <div id="modify-table-1df_lab" class="section level1">
@@ -884,7 +884,7 @@ f_cox_rds &lt;- c(&quot;../p03_modeling/df_cox_&quot;, ts, &quot;.rds&quot;) %&g
     str_c(collapse = &quot;&quot;)
 
 f_cox_rds</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/df_cox_20240208_030344.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../p03_modeling/df_cox_20240402_074512.rds&quot;</code></pre>
 <pre class="r"><code>df_cox %&gt;% saveRDS(f_cox_rds)</code></pre>
 </div>
 <div id="df_mix-rds" class="section level1">
@@ -900,7 +900,7 @@ f_mix_rds &lt;- c(&quot;../p03_modeling/df_mix_&quot;, ts, &quot;.rds&quot;) %&g
     str_c(collapse = &quot;&quot;)
 
 f_mix_rds</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/df_mix_20240208_030344.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../p03_modeling/df_mix_20240402_074512.rds&quot;</code></pre>
 <pre class="r"><code>df_mix %&gt;% saveRDS(f_mix_rds)</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)

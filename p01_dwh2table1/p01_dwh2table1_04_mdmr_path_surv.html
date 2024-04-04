@@ -436,7 +436,7 @@ require(IRdisplay)</code></pre>
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240208_030027&quot;</code></pre>
+<pre><code>## [1] &quot;20240402_072725&quot;</code></pre>
 <pre class="r"><code>read_from_tag &lt;- function(ddir, tag=NULL){
     if(is.null(tag)){
         tags &lt;- list.files(ddir, pattern = &quot;csv.bz2&quot;) %&gt;%
@@ -700,12 +700,14 @@ df_mrdr_rr &lt;-  df_mrdr_rr_org %&gt;%
            factor(., levels = c(&quot;well&quot;, &quot;moderate&quot;, &quot;poor&quot;, &quot;NA&quot;)),
            position_fix = case_when(
                str_detect(position, &quot;_&quot;) ~ &quot;multiple&quot;,
-               str_detect(position, &quot;180|181|182|183&quot;) ~ &quot;right_side&quot;,
+               str_detect(position, &quot;180|181&quot;) ~ &quot;ileocecal&quot;,
+               str_detect(position, &quot;182|183&quot;) ~ &quot;ascending&quot;,
                str_detect(position, &quot;184&quot;) ~ &quot;transverse&quot;,
-               str_detect(position, &quot;185|186|187&quot;) ~ &quot;left_side&quot;,
+               str_detect(position, &quot;185|186&quot;) ~ &quot;descending&quot;,
+               str_detect(position, &quot;187&quot;) ~ &quot;sigmoid&quot;,
                str_detect(position, &quot;199|209&quot;) ~ &quot;rectum&quot;,
-               T ~ &quot;other&quot;
-           ) %&gt;% factor(., levels = c(&quot;right_side&quot;, &quot;transverse&quot;, &quot;left_side&quot;, &quot;rectum&quot;, &quot;multiple&quot;, &quot;other&quot;)),
+               T ~ &quot;other&quot;) %&gt;% 
+           factor(., levels = c(&quot;ileocecal&quot;, &quot;ascending&quot;, &quot;transverse&quot;, &quot;descending&quot;, &quot;sigmoid&quot;, &quot;rectum&quot;, &quot;multiple&quot;, &quot;other&quot;)),
            CEA_count = CEA,
            CA19_9_count = `CA19-9`,
            kras_mutation = if_else(kras_mutation == 1, &quot;detected&quot;, &quot;not_detected&quot;),
@@ -738,7 +740,7 @@ df_mrdr_rr &lt;-  df_mrdr_rr_org %&gt;%
     dim()</code></pre>
 <pre><code>## [1] 614  47</code></pre>
 <pre class="r"><code>ts</code></pre>
-<pre><code>## [1] &quot;20240208_030027&quot;</code></pre>
+<pre><code>## [1] &quot;20240402_072725&quot;</code></pre>
 <pre class="r"><code>f &lt;- &quot;../../dat/p1_mcp2dwh/df_ex_pts_tsxx.xlsx&quot;
 f &lt;- f %&gt;%
     str_replace(&quot;tsxx&quot;, ts)
@@ -748,9 +750,9 @@ f2 &lt;- f %&gt;%
 saveRDS(df_biom_follow_mr, f2)
 write.xlsx(df_biom_follow_mr, f)</code></pre>
 <pre class="r"><code>f2</code></pre>
-<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240208_030027_with_biomfollow_mr.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240402_072725_with_biomfollow_mr.rds&quot;</code></pre>
 <pre class="r"><code>f</code></pre>
-<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240208_030027.xlsx&quot;</code></pre>
+<pre><code>## [1] &quot;../../dat/p1_mcp2dwh/df_ex_pts_20240402_072725.xlsx&quot;</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)
 ## Platform: x86_64-conda-linux-gnu (64-bit)

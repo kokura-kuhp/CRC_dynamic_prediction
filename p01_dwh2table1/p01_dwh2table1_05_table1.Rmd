@@ -25,7 +25,7 @@ ts
 ```
 
 ```{r}
-f <- "../../dat/p1_mcp2dwh/df_ex_pts_20231129_041517_with_biomfollow_mr.rds"
+f <- "../../dat/p1_mcp2dwh/df_ex_pts_20240331_041211_with_biomfollow_mr.rds"
 
 df <- readRDS(f)
 
@@ -52,7 +52,8 @@ df_in %>%
 ```
 
 ```{r}
-tb1 <- table1(~age_at_start+gender+cT_categ_fix+cN_categ_fix+cM_categ_fix+diffgrade_fix+position_fix+CEA_count|cStage_fix,
+tb1 <- table1(~age_at_start + gender + cT_categ_fix + cN_categ_fix + cM_categ_fix + 
+                diffgrade_fix + position_fix + CEA_count | cStage_fix,
              data=df_in)
 
 tb1

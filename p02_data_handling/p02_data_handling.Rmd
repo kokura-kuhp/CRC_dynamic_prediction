@@ -48,7 +48,7 @@ df_pts_somat <- readRDS(f_pts_somat) %>%
     mutate(in_date = as.Date(in_date, origin = "1899-12-30"))
 
 # df_pts
-f_pts <- '../../dat/p1_mcp2dwh/df_ex_pts_20231129_041815_with_biomfollow_mr.rds'
+f_pts <- '../../dat/p1_mcp2dwh/df_ex_pts_20240331_041211_with_biomfollow_mr.rds'
 df_pts <- readRDS(f_pts)  %>% 
     dplyr::select(-CEA, -`CA19-9`) %>% 
     mutate(gender = if_else(gender == "1：男", "1", "0"))
@@ -64,7 +64,7 @@ df_prs <- fread(f_prs) %>%
     mutate(TAKING_START_DATE = as.Date(TAKING_START_DATE, origin = "1899-12-30")) 
 
 # df_si
-f_si <- '../../dat/p8_si_premix/si_cumsum_20231129_043431.rds'
+f_si <- '../../dat/p8_si_premix/si_cumsum_20240402_073722.rds'
 df_si <- readRDS(f_si)
 ```
 
