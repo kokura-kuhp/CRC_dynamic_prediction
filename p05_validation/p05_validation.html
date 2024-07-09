@@ -488,8 +488,8 @@ get_vals &lt;- function(l){
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240402_094154&quot;</code></pre>
-<pre class="r"><code>f_rds &lt;- &quot;../p03_modeling/dat/eval_list_20240402_090057.rds&quot;
+<pre><code>## [1] &quot;20240702_092823&quot;</code></pre>
+<pre class="r"><code>f_rds &lt;- &quot;../p03_modeling/dat/eval_list_20240702_083021.206594.rds&quot;
 readRDS(f_rds) %&gt;%
   get_vals()</code></pre>
 <pre><code>## [1] &quot;df_mix_1st&quot;  &quot;fit_cox&quot;     &quot;df_cox&quot;      &quot;df_mix_cea&quot;  &quot;fit_cox_sub&quot;
@@ -537,7 +537,7 @@ print(df_mix_smr, n=22)</code></pre>
   str_replace(&quot;tsxx&quot;, ts)
 
 f_cross_valid</code></pre>
-<pre><code>## [1] &quot;../p05_cross_validation/cross_valid_20240402_094154.xlsx&quot;</code></pre>
+<pre><code>## [1] &quot;../p05_cross_validation/cross_valid_20240702_092823.xlsx&quot;</code></pre>
 <pre class="r"><code># write.xlsx(x = df_mix_smr, file = f_cross_valid, overwrite = T)</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.2.3 (2023-03-15)

@@ -102,6 +102,8 @@ fix_df <- function(df){
              as.numeric()) %>%
     mutate(is_well = if_else(is.na(diffgrade_fix), "",as.character(diffgrade_fix))  %>%
              magrittr::equals("well")) %>%
+    mutate(is_por = if_else(is.na(diffgrade_fix), "",as.character(diffgrade_fix))  %>%
+             magrittr::equals("poor")) %>%
     mutate(is_right = position_fix == "ileocecal"|
              position_fix == "ascending"|
              position_fix == "transverse"|
@@ -126,7 +128,7 @@ df_mix_1st <- df_mix %>%
     filter(year_samp_from_start == min(year_samp_from_start)) %>%
     ungroup()
 
-fit_cox <- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_well + gender + is_right + log2(CEA),
+fit_cox <- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_por + gender + is_right + log2(CEA),
                  data = df_mix_1st, x = TRUE)
 
 summary(fit_cox)
@@ -177,7 +179,7 @@ summary(fit_mix_cea)$coef$fixed
 
 # Joint model
 ```{r}
-fit_cox_sub <- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_well + gender + is_right, 
+fit_cox_sub <- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_por + gender + is_right, 
                      data = df_cox, x = TRUE)
 
 fit_JM_cea <- jointModel(fit_mix_cea, fit_cox_sub, 

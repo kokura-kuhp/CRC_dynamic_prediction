@@ -110,7 +110,7 @@ ts
 
 
 ```{r}
-f_rds <- "../p03_modeling/dat/eval_list_20240402_090057.rds"
+f_rds <- "../p03_modeling/dat/eval_list_20240702_083021.206594.rds"
 readRDS(f_rds) %>%
   get_vals()
 ```

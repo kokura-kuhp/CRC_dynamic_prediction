@@ -79,6 +79,126 @@ sv2ggkm <- function(svfit, df){
 }
 ```
 
+# definition; get_survfitJM_mst
+```{r}
+get_survfitJM_mst <-
+  function (x, estimator = c("both", "mean", "median"), 
+            which = NULL, fun = NULL, conf.int = FALSE,
+            fill.area = FALSE, col.area = "grey", col.abline = "black", col.points = "black",
+            add.last.time.axis.tick = FALSE, include.y = FALSE, main = NULL, xlab = NULL, ylab = NULL, ylab2 = NULL,
+            lty = NULL, col = NULL, lwd = NULL, pch = NULL, ask = NULL, legend = FALSE, ..., cex.axis.z = 1, 
+        cex.lab.z = 1) {
+    #fix from plot.survfitJM
+    estimator <- match.arg(estimator)
+    fun <- if (!is.null(fun)) match.fun(fun)
+    if (is.null(which))
+        which <- seq_along(x$summaries)
+    if (conf.int && is.null(x$success.rate)) {
+        warning("a confidence interval can be included only when argument", 
+            "'simulate' of survfitJM() was set to TRUE.")
+        conf.int <- FALSE
+    }
+    if (is.null(ask))
+        ask <- prod(par("mfcol")) < length(which)
+    if (ask) {
+        op <- par(ask = TRUE)
+        on.exit(par(op))
+    }
+    if (is.null(main)) {
+        main <- paste("Subject", names(x$summaries))
+        names(main) <- names(x$summaries)
+    }
+    if (is.null(xlab))
+        xlab <- rep("Time", length(which))
+    if (is.null(ylab)) {
+        ylab <- if (is.null(fun))
+            if (!include.y)
+                rep(expression(paste("Pr(", T[i] >= u, " | ", T[i] > t, 
+                    ", ", tilde(y)[i](t), ")", sep = " ")), length(which))
+            else
+                rep("Survival Probability", length(which))
+        else
+            rep("", length(which))
+    }
+    if (is.null(ylab2))
+        ylab2 <- "Longitudinal Outcome"
+    if (!is.null(x$success.rate)) {
+        if (is.null(col))
+            col <- switch(estimator, both = c(2, 3, 1, 1), mean = c(2, 1, 1), median = c(3, 1, 1))
+        if (is.null(lty))
+            lty <- switch(estimator, both = c(1, 1, 2, 2), mean = c(1, 2, 2), median = c(1, 2, 2))
+        if (is.null(lwd))
+            lwd <- switch(estimator, both = c(1, 1, 1, 1), mean = c(1, 1, 1), median = c(1, 1, 1))
+    } else {
+        col <- lty <- lwd <- 1
+    }
+    if (is.null(pch))
+        pch <- 8
+    l_eval <- list()
+    for (i in seq_along(which)) {
+        ii <- which[i]
+        r <- x$summaries[[ii]]
+        r <- if (!is.null(x$success.rate)) {
+            rbind(cbind(c(0, x$last.time[ii]), matrix(1, 2, 4)), r)
+        } else {
+            rbind(cbind(c(0, x$last.time[ii]), matrix(1, 2, 1)), r)
+        }
+        if (!is.null(fun) && is.function(fun))
+            r[, 2:ncol(r)] <- fun(r[, 2:ncol(r)])
+        if (!is.null(x$success.rate) && estimator == "mean")
+            r <- r[, -3]
+        if (!is.null(x$success.rate) && estimator == "median")
+            r <- r[, -2]
+        if (!conf.int && !is.null(x$success.rate)) {
+            exc <- c(ncol(r) - 1, ncol(r))
+            r <- r[, -exc, drop = FALSE]
+            col <- col[-exc]
+            lty <- lty[-exc]
+            lwd <- lwd[-exc]
+        }
+        ylim <- if (is.null(fun)) c(0, 1) else { rr <- r[, -1, drop = FALSE]; range(rr[is.finite(rr)]) } 
+        
+        lt <- x$last.time[ii]
+        r. <- r[r[, 1] >= lt, ]
+        l_eval <- append(l_eval,list(r.))
+        rng <- range(x$obs.times[[ii]], x$survTimes)
+    
+    }
+    # invisible()
+    
+    mst <- get_mst(l_eval)
+    mst <- mst -as.numeric(x$last.time)
+    return(mst)
+    # return(l_eval)
+}
+
+get_mst <- function(l_eval){
+  df_xx<- l_eval %>% 
+    as.data.frame() 
+  if(0.5 < min(df_xx$Mean)){
+    return(NA)
+  }else{
+    
+  df_xx <- df_xx%>% 
+    as.data.frame() %>% 
+    mutate(y = Mean -0.5) %>% 
+    mutate(ud = y>0) %>% 
+    group_by(ud) %>% 
+    mutate(min_y = min(abs(y))) %>% 
+    filter(min_y == abs(y))
+  x1 <- df_xx$times[[1]]
+  x2 <- df_xx$times[[2]]
+  y1 <- df_xx$y[[1]]
+  y2 <- df_xx$y[[2]]
+  a <- (y2 -y1)/(x2 - x1)
+  b <- a*x1 -y1
+  x0 <- x1 -(b/a)*y1
+  return(x0)
+  }
+}
+```
+
+
 # load and save functions
 ```{r}
 append_list <- function(l, x){
@@ -108,7 +228,7 @@ ts
 
 # load files
 ```{r}
-f_rds <- "../p03_modeling/dat/eval_list_20240402_090057.rds"
+f_rds <- "../p03_modeling/dat/eval_list_20240702_083021.206594.rds"
 readRDS(f_rds) %>%
   get_vals()
 ```
@@ -166,10 +286,26 @@ d_83 <- df_mix_predict %>%
 
 #time = 5, 10, 15, 20
 par(mfrow = c(2, 2))
-for (i in c(5, 10, 15, 20) ) {
+for (i in c(5, 10, 15, 20)) {
   sfit83_i <- survfitJM(fit_JM_cea, newdata = d_83[1:i, ], idVar = "id")
   fig83<- plot(sfit83_i, estimator="mean", include.y = TRUE, conf.int=0.95, fill.area=TRUE,
        col.area="lightblue", main="Patient 83", ask = F)
+}
+```
+
+# Clinical Case Presentation.1-MST
+```{r}
+for (i in c(5, 10, 15, 20)) {
+  sfit83_i <- survfitJM(fit_JM_cea, newdata = d_83[1:i, ], idVar = "id")
+
+  fig_r <- c("fig_83_", i, ".png") %>%
+    str_c(collapse = "")
+
+  mst<- get_survfitJM_mst(sfit83_i, estimator="mean", include.y = TRUE,
+                          conf.int=0.95, fill.area=TRUE,col.area="lightblue",
+                          main="Patient 83", ask = F)
+  print(i)
+  print(mst)
 }
 ```
 
@@ -189,7 +325,7 @@ fig_pred_317 <- ggplot() + theme_pubr(base_size = 15, base_family = "Times") +
         
 plot(fig_pred_317)
 
-ggsave2_tri(fig_pred_317, wid = 18, hei=9)
+ggsave2_tri(fig_pred_317, wid = 9, hei=9)
 ```
 
 # Clinical Case Presentation.2-survival probability
@@ -205,6 +341,23 @@ fig_317 <- for (i in c(25, 50, 75, 100) ) {
        col.area="lightblue", main="Patient 317", ask = F)
 }
 ```
+
+# Clinical Case Presentation.2-MST
+```{r}
+for (i in c(25, 50, 75, 100)) {
+  sfit317_i <- survfitJM(fit_JM_cea, newdata = d_317[1:i, ], idVar = "id")
+
+  fig_r <- c("fig_317_", i, ".png") %>%
+    str_c(collapse = "")
+
+  mst<- get_survfitJM_mst(sfit317_i, estimator="mean", include.y = TRUE,
+                          conf.int=0.95, fill.area=TRUE,col.area="lightblue",
+                          main="Patient 317", ask = F)
+  print(i)
+  print(mst)
+}
+```
+
 
 # Figure_whole
 ```{r}
@@ -224,7 +377,7 @@ for(i in c(1:max(df_whole$id))){
 }
 
 fig_whole <- fig_whole + 
-  geom_smooth(data = df_whole, aes(x = x, y = y), method = "lm", se = FALSE, color = "red")
+  geom_smooth(data = df_whole, aes(x = x, y = y), method = "lm", se = FALSE, color = "red") 
 
 fig_whole
 
@@ -320,7 +473,7 @@ fig_auc <- ggplot(df_auc, aes(x = years, y = auc, color = model)) +
   legend.text = element_text(size = 20),
   legend.title = element_text(size = 20)
  )+
-    geom_line(size = 1) +
+    geom_line(linewidth = 1) +
   geom_point(size = 2) +
   ylim(0.68, 0.88)
 

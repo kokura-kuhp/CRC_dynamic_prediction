@@ -361,15 +361,13 @@ display: none;
 <h1>load package</h1>
 <pre class="r"><code>require(tidyverse)</code></pre>
 <pre><code>## Loading required package: tidyverse</code></pre>
-<pre><code>## Warning in system(&quot;timedatectl&quot;, intern = TRUE): running command &#39;timedatectl&#39;
-## had status 1</code></pre>
 <pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.3     ✔ readr     2.1.4
-## ✔ forcats   1.0.0     ✔ stringr   1.5.0
-## ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-## ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
-## ✔ purrr     1.0.2</code></pre>
-<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✔ dplyr     1.1.4     ✔ readr     2.1.5
+## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ ggplot2   3.5.0     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
+## ✔ purrr     1.0.2     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()
 ## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
@@ -469,7 +467,7 @@ sv2ggkm &lt;- function(svfit, df){
     str_remove_all(., &quot;[-:]*&quot;) %&gt;% 
     str_replace(.,&quot; &quot;, &quot;_&quot;)
 ts</code></pre>
-<pre><code>## [1] &quot;20240402_093515&quot;</code></pre>
+<pre><code>## [1] &quot;20240702_083021.206594&quot;</code></pre>
 </div>
 <div id="read-each-file" class="section level1">
 <h1>read each file</h1>
@@ -483,6 +481,8 @@ fix_df &lt;- function(df){
              as.numeric()) %&gt;%
     mutate(is_well = if_else(is.na(diffgrade_fix), &quot;&quot;,as.character(diffgrade_fix))  %&gt;%
              magrittr::equals(&quot;well&quot;)) %&gt;%
+    mutate(is_por = if_else(is.na(diffgrade_fix), &quot;&quot;,as.character(diffgrade_fix))  %&gt;%
+             magrittr::equals(&quot;poor&quot;)) %&gt;%
     mutate(is_right = position_fix == &quot;ileocecal&quot;|
              position_fix == &quot;ascending&quot;|
              position_fix == &quot;transverse&quot;|
@@ -506,47 +506,47 @@ df_mix &lt;- readRDS(f_mix_rds) %&gt;%
     filter(year_samp_from_start == min(year_samp_from_start)) %&gt;%
     ungroup()
 
-fit_cox &lt;- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_well + gender + is_right + log2(CEA),
+fit_cox &lt;- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_por + gender + is_right + log2(CEA),
                  data = df_mix_1st, x = TRUE)
 
 summary(fit_cox)</code></pre>
 <pre><code>## Call:
 ## coxph(formula = Surv(time = time_y, event = event) ~ age_at_start + 
-##     Stage + is_well + gender + is_right + log2(CEA), data = df_mix_1st, 
+##     Stage + is_por + gender + is_right + log2(CEA), data = df_mix_1st, 
 ##     x = TRUE)
 ## 
 ##   n= 614, number of events= 195 
 ## 
-##                   coef exp(coef)  se(coef)      z Pr(&gt;|z|)    
-## age_at_start  0.024012  1.024303  0.006556  3.662  0.00025 ***
-## Stage         0.659118  1.933087  0.110759  5.951 2.67e-09 ***
-## is_wellTRUE  -0.084367  0.919094  0.170271 -0.495  0.62026    
-## gender        0.074608  1.077462  0.152479  0.489  0.62463    
-## is_rightTRUE  0.147824  1.159309  0.178439  0.828  0.40743    
-## log2(CEA)     0.102016  1.107401  0.025645  3.978 6.95e-05 ***
+##                  coef exp(coef) se(coef)     z Pr(&gt;|z|)    
+## age_at_start 0.024613  1.024918 0.006647 3.703 0.000213 ***
+## Stage        0.650763  1.917003 0.110675 5.880 4.10e-09 ***
+## is_porTRUE   0.638975  1.894538 0.296919 2.152 0.031396 *  
+## gender       0.071780  1.074419 0.152633 0.470 0.638157    
+## is_rightTRUE 0.039676  1.040473 0.190020 0.209 0.834606    
+## log2(CEA)    0.104155  1.109773 0.025561 4.075 4.61e-05 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ##              exp(coef) exp(-coef) lower .95 upper .95
-## age_at_start    1.0243     0.9763    1.0112     1.038
-## Stage           1.9331     0.5173    1.5559     2.402
-## is_wellTRUE     0.9191     1.0880    0.6583     1.283
-## gender          1.0775     0.9281    0.7991     1.453
-## is_rightTRUE    1.1593     0.8626    0.8172     1.645
-## log2(CEA)       1.1074     0.9030    1.0531     1.164
+## age_at_start     1.025     0.9757    1.0117     1.038
+## Stage            1.917     0.5216    1.5432     2.381
+## is_porTRUE       1.895     0.5278    1.0587     3.390
+## gender           1.074     0.9307    0.7966     1.449
+## is_rightTRUE     1.040     0.9611    0.7169     1.510
+## log2(CEA)        1.110     0.9011    1.0555     1.167
 ## 
-## Concordance= 0.729  (se = 0.019 )
-## Likelihood ratio test= 107.6  on 6 df,   p=&lt;2e-16
-## Wald test            = 96.3  on 6 df,   p=&lt;2e-16
-## Score (logrank) test = 105.7  on 6 df,   p=&lt;2e-16</code></pre>
+## Concordance= 0.736  (se = 0.019 )
+## Likelihood ratio test= 111.4  on 6 df,   p=&lt;2e-16
+## Wald test            = 100.6  on 6 df,   p=&lt;2e-16
+## Score (logrank) test = 111.1  on 6 df,   p=&lt;2e-16</code></pre>
 <pre class="r"><code>exp(confint(fit_cox, level = 0.95, process = &quot;Event&quot;))</code></pre>
 <pre><code>##                  2.5 %   97.5 %
-## age_at_start 1.0112247 1.037550
-## Stage        1.5558700 2.401760
-## is_wellTRUE  0.6583023 1.283201
-## gender       0.7991185 1.452756
-## is_rightTRUE 0.8171693 1.644700
-## log2(CEA)    1.0531158 1.164484</code></pre>
+## age_at_start 1.0116515 1.038359
+## Stage        1.5431777 2.381385
+## is_porTRUE   1.0586808 3.390325
+## gender       0.7966218 1.449089
+## is_rightTRUE 0.7169440 1.509999
+## log2(CEA)    1.0555444 1.166787</code></pre>
 </div>
 <div id="mixed-effects-model" class="section level1">
 <h1>mixed effects model</h1>
@@ -622,7 +622,7 @@ summary(fit_mix_cea)$coef$fixed</code></pre>
 </div>
 <div id="joint-model" class="section level1">
 <h1>Joint model</h1>
-<pre class="r"><code>fit_cox_sub &lt;- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_well + gender + is_right, 
+<pre class="r"><code>fit_cox_sub &lt;- coxph(Surv(time = time_y, event = event) ~ age_at_start + Stage + is_por + gender + is_right, 
                      data = df_cox, x = TRUE)
 
 fit_JM_cea &lt;- jointModel(fit_mix_cea, fit_cox_sub, 
@@ -646,53 +646,53 @@ summary(fit_JM_cea)</code></pre>
 ## Parameterization: Time-dependent 
 ## 
 ##    log.Lik      AIC      BIC
-##  -21291.72 42653.45 42808.15
+##  -21288.27 42646.55 42801.25
 ## 
 ## Variance Components:
 ##                       StdDev    Corr
 ## (Intercept)           1.8967  (Intr)
-## year_samp_from_start  1.0616  0.3316
-## Residual              0.8467        
+## year_samp_from_start  1.0627  0.3314
+## Residual              0.8466        
 ## 
 ## Coefficients:
 ## Longitudinal Process
 ##                        Value Std.Err  z-value p-value
-## (Intercept)           3.0528  0.0682  44.7629 &lt;0.0001
-## year_samp_from_start  0.6352  0.0276  23.0303 &lt;0.0001
-## inj_Nivo              0.3899  0.1107   3.5235  0.0004
-## inj_OHP              -0.0631  0.0068  -9.3210 &lt;0.0001
-## inj_FU_LV            -0.0344  0.0049  -7.0510 &lt;0.0001
-## inj_IRI               0.0120  0.0048   2.4959  0.0126
-## inj_Pmab              0.0106  0.0056   1.8984  0.0576
-## inj_Bev              -0.0352  0.0043  -8.2368 &lt;0.0001
-## inj_Cmab             -0.0566  0.0071  -7.9390 &lt;0.0001
-## inj_AFL               0.1727  0.0155  11.1158 &lt;0.0001
-## inj_Rmab              0.0383  0.0131   2.9323  0.0034
-## inj_Pembro           -0.0790  0.0428  -1.8456  0.0650
-## prs_TS1               0.0164  0.0054   3.0563  0.0022
-## prs_Cape              0.0160  0.0029   5.5266 &lt;0.0001
-## prs_REG               0.0570  0.0075   7.5462 &lt;0.0001
-## prs_TAS102            0.1015  0.0058  17.5335 &lt;0.0001
-## prs_UFT              -0.0031  0.0056  -0.5532  0.5802
-## prs_BINI              0.1491  0.1060   1.4066  0.1595
-## si_colrec_sx         -0.8675  0.0332 -26.1548 &lt;0.0001
-## si_endo_tx            0.0440  0.0591   0.7452  0.4561
-## si_liv_sx            -0.9864  0.0319 -30.8991 &lt;0.0001
-## si_lng_sx            -0.2593  0.0428  -6.0599 &lt;0.0001
-## si_rtx               -0.0245  0.0023 -10.5313 &lt;0.0001
+## (Intercept)           3.0524  0.0679  44.9835 &lt;0.0001
+## year_samp_from_start  0.6358  0.0272  23.3313 &lt;0.0001
+## inj_Nivo              0.3899  0.1107   3.5239  0.0004
+## inj_OHP              -0.0631  0.0068  -9.3211 &lt;0.0001
+## inj_FU_LV            -0.0345  0.0049  -7.0764 &lt;0.0001
+## inj_IRI               0.0119  0.0048   2.4945  0.0126
+## inj_Pmab              0.0103  0.0055   1.8553  0.0636
+## inj_Bev              -0.0351  0.0043  -8.2331 &lt;0.0001
+## inj_Cmab             -0.0562  0.0071  -7.9132 &lt;0.0001
+## inj_AFL               0.1729  0.0155  11.1472 &lt;0.0001
+## inj_Rmab              0.0381  0.0130   2.9313  0.0034
+## inj_Pembro           -0.0765  0.0425  -1.8025  0.0715
+## prs_TS1               0.0161  0.0054   3.0155  0.0026
+## prs_Cape              0.0160  0.0029   5.5453 &lt;0.0001
+## prs_REG               0.0567  0.0075   7.5172 &lt;0.0001
+## prs_TAS102            0.1015  0.0058  17.5344 &lt;0.0001
+## prs_UFT              -0.0028  0.0056  -0.4998  0.6172
+## prs_BINI              0.1488  0.1060   1.4036  0.1604
+## si_colrec_sx         -0.8674  0.0331 -26.1946 &lt;0.0001
+## si_endo_tx            0.0438  0.0586   0.7471  0.4550
+## si_liv_sx            -0.9876  0.0318 -31.0686 &lt;0.0001
+## si_lng_sx            -0.2599  0.0427  -6.0874 &lt;0.0001
+## si_rtx               -0.0244  0.0023 -10.4756 &lt;0.0001
 ## 
 ## Event Process
 ##                Value Std.Err  z-value p-value
-## (Intercept)  -7.7387  0.6290 -12.3032 &lt;0.0001
-## age_at_start  0.0363  0.0069   5.2725 &lt;0.0001
-## Stage         0.1037  0.0978   1.0602  0.2890
-## is_wellTRUE  -0.1851  0.1745  -1.0608  0.2888
-## gender       -0.0430  0.1534  -0.2800  0.7795
-## is_rightTRUE  0.2865  0.1820   1.5748  0.1153
-## Assoct        0.4237  0.0227  18.6810 &lt;0.0001
-## log(shape)    0.1804  0.0639   2.8216  0.0048
+## (Intercept)  -7.8847  0.6329 -12.4590 &lt;0.0001
+## age_at_start  0.0380  0.0070   5.4225 &lt;0.0001
+## Stage         0.0888  0.0971   0.9142  0.3606
+## is_porTRUE    0.9282  0.2988   3.1071  0.0019
+## gender       -0.0708  0.1529  -0.4634  0.6431
+## is_rightTRUE  0.1499  0.1911   0.7846  0.4327
+## Assoct        0.4285  0.0228  18.8231 &lt;0.0001
+## log(shape)    0.1848  0.0641   2.8841  0.0039
 ## 
-## Scale: 1.1977 
+## Scale: 1.203 
 ## 
 ## Integration:
 ## method: (pseudo) adaptive Gauss-Hermite
@@ -702,36 +702,36 @@ summary(fit_JM_cea)</code></pre>
 ## Convergence: 0</code></pre>
 <pre class="r"><code>exp(confint(fit_JM_cea, level = 0.95, process = &quot;Event&quot;))</code></pre>
 <pre><code>##                               2.5 %         est.       97.5 %
-## Y.(Intercept)          1.852512e+01 2.117446e+01 24.202698456
-## Y.year_samp_from_start 1.787998e+00 1.887306e+00  1.992128958
-## Y.inj_Nivo             1.188899e+00 1.476866e+00  1.834583172
-## Y.inj_OHP              9.264927e-01 9.388645e-01  0.951401427
-## Y.inj_FU_LV            9.570358e-01 9.662210e-01  0.975494287
-## Y.inj_IRI              1.002571e+00 1.012031e+00  1.021579361
-## Y.inj_Pmab             9.996578e-01 1.010610e+00  1.021682107
-## Y.inj_Bev              9.574039e-01 9.654482e-01  0.973560139
-## Y.inj_Cmab             9.318133e-01 9.449345e-01  0.958240417
-## Y.inj_AFL              1.152821e+00 1.188456e+00  1.225192527
-## Y.inj_Rmab             1.012789e+00 1.039069e+00  1.066029917
-## Y.inj_Pembro           8.496107e-01 9.240035e-01  1.004910137
-## Y.prs_TS1              1.005903e+00 1.016544e+00  1.027296952
-## Y.prs_Cape             1.010349e+00 1.016081e+00  1.021846356
-## Y.prs_REG              1.043073e+00 1.058621e+00  1.074400996
-## Y.prs_TAS102           1.094364e+00 1.106854e+00  1.119487044
-## Y.prs_UFT              9.859698e-01 9.968948e-01  1.007940930
-## Y.prs_BINI             9.430360e-01 1.160769e+00  1.428772826
-## Y.si_colrec_sx         3.935725e-01 4.200072e-01  0.448217431
-## Y.si_endo_tx           9.307490e-01 1.045012e+00  1.173301592
-## Y.si_liv_sx            3.503098e-01 3.729277e-01  0.397005922
-## Y.si_lng_sx            7.095644e-01 7.716274e-01  0.839118709
-## Y.si_rtx               9.713691e-01 9.758066e-01  0.980264449
-## T.(Intercept)          1.269701e-04 4.356192e-04  0.001494558
-## T.age_at_start         1.023070e+00 1.036970e+00  1.051059024
-## T.Stage                9.157538e-01 1.109279e+00  1.343702247
-## T.is_wellTRUE          5.902642e-01 8.309922e-01  1.169896364
-## T.gender               7.092055e-01 9.579535e-01  1.293947864
-## T.is_rightTRUE         9.323132e-01 1.331814e+00  1.902501574
-## T.Assoct               1.461158e+00 1.527575e+00  1.597009530</code></pre>
+## Y.(Intercept)          1.853024e+01 2.116606e+01 24.176816287
+## Y.year_samp_from_start 1.790258e+00 1.888472e+00  1.992074476
+## Y.inj_Nivo             1.188942e+00 1.476902e+00  1.834606000
+## Y.inj_OHP              9.265217e-01 9.388887e-01  0.951420775
+## Y.inj_FU_LV            9.569189e-01 9.661026e-01  0.975374418
+## Y.inj_IRI              1.002561e+00 1.012008e+00  1.021543137
+## Y.inj_Pmab             9.994201e-01 1.010332e+00  1.021363168
+## Y.inj_Bev              9.574510e-01 9.654895e-01  0.973595386
+## Y.inj_Cmab             9.322408e-01 9.453164e-01  0.958575468
+## Y.inj_AFL              1.153108e+00 1.188691e+00  1.225372622
+## Y.inj_Rmab             1.012713e+00 1.038860e+00  1.065681583
+## Y.inj_Pembro           8.523399e-01 9.263141e-01  1.006708514
+## Y.prs_TS1              1.005668e+00 1.016278e+00  1.026999567
+## Y.prs_Cape             1.010383e+00 1.016104e+00  1.021858372
+## Y.prs_REG              1.042815e+00 1.058348e+00  1.074113220
+## Y.prs_TAS102           1.094308e+00 1.106790e+00  1.119413515
+## Y.prs_UFT              9.863658e-01 9.972146e-01  1.008182684
+## Y.prs_BINI             9.427435e-01 1.160395e+00  1.428295950
+## Y.si_colrec_sx         3.936487e-01 4.200443e-01  0.448209772
+## Y.si_endo_tx           9.313352e-01 1.044788e+00  1.172061509
+## Y.si_liv_sx            3.499826e-01 3.724804e-01  0.396424388
+## Y.si_lng_sx            7.092126e-01 7.711176e-01  0.838425970
+## Y.si_rtx               9.714898e-01 9.759287e-01  0.980387933
+## T.(Intercept)          1.088972e-04 3.764478e-04  0.001301346
+## T.age_at_start         1.024586e+00 1.038769e+00  1.053149351
+## T.Stage                9.033998e-01 1.092868e+00  1.322074143
+## T.is_porTRUE           1.408750e+00 2.530076e+00  4.543946064
+## T.gender               6.903975e-01 9.316086e-01  1.257093914
+## T.is_rightTRUE         7.988541e-01 1.161720e+00  1.689412001
+## T.Assoct               1.467943e+00 1.534920e+00  1.604951624</code></pre>
 </div>
 <div id="load-and-save-functions" class="section level1">
 <h1>load and save functions</h1>
@@ -763,15 +763,15 @@ eval_list &lt;- list() %&gt;%
 f_eval_list &lt;- c(&quot;../p03_modeling/dat/eval_list_&quot;,ts, &quot;.rds&quot;) %&gt;% 
   str_c(collapse = &quot;&quot;)
 f_eval_list</code></pre>
-<pre><code>## [1] &quot;../p03_modeling/dat/eval_list_20240402_093515.rds&quot;</code></pre>
+<pre><code>## [1] &quot;../p03_modeling/dat/eval_list_20240702_083021.206594.rds&quot;</code></pre>
 <pre class="r"><code>saveRDS(eval_list, file = f_eval_list)</code></pre>
 <pre class="r"><code>sessionInfo()</code></pre>
-<pre><code>## R version 4.2.3 (2023-03-15)
+<pre><code>## R version 4.3.3 (2024-02-29)
 ## Platform: x86_64-conda-linux-gnu (64-bit)
-## Running under: Ubuntu 22.04.2 LTS
+## Running under: Ubuntu 22.04.3 LTS
 ## 
 ## Matrix products: default
-## BLAS/LAPACK: /opt/conda/lib/libopenblasp-r0.3.21.so
+## BLAS/LAPACK: /opt/conda/lib/libopenblasp-r0.3.24.so;  LAPACK version 3.11.0
 ## 
 ## locale:
 ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
@@ -781,34 +781,37 @@ f_eval_list</code></pre>
 ##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
 ## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
 ## 
+## time zone: Etc/UTC
+## tzcode source: system (glibc)
+## 
 ## attached base packages:
 ## [1] splines   stats     graphics  grDevices utils     datasets  methods  
 ## [8] base     
 ## 
 ## other attached packages:
-##  [1] ggpubr_0.6.0        survivalROC_1.0.3.1 officer_0.6.3      
-##  [4] openxlsx_4.2.5.2    JM_1.5-1            MASS_7.3-60        
-##  [7] nlme_3.1-163        survival_3.5-7      lubridate_1.9.3    
-## [10] forcats_1.0.0       stringr_1.5.0       dplyr_1.1.3        
-## [13] purrr_1.0.2         readr_2.1.4         tidyr_1.3.0        
-## [16] tibble_3.2.1        ggplot2_3.4.4       tidyverse_2.0.0    
+##  [1] ggpubr_0.6.0        survivalROC_1.0.3.1 officer_0.6.5      
+##  [4] openxlsx_4.2.5.2    JM_1.5-2            MASS_7.3-60        
+##  [7] nlme_3.1-164        survival_3.5-8      lubridate_1.9.3    
+## [10] forcats_1.0.0       stringr_1.5.1       dplyr_1.1.4        
+## [13] purrr_1.0.2         readr_2.1.5         tidyr_1.3.1        
+## [16] tibble_3.2.1        ggplot2_3.5.0       tidyverse_2.0.0    
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] Rcpp_1.0.11       lattice_0.22-5    digest_0.6.33     utf8_1.2.4       
-##  [5] R6_2.5.1          backports_1.4.1   evaluate_0.22     pillar_1.9.0     
-##  [9] rlang_1.1.1       uuid_1.1-1        rstudioapi_0.15.0 car_3.1-2        
-## [13] jquerylib_0.1.4   Matrix_1.6-1.1    rmarkdown_2.25    textshaping_0.3.7
-## [17] munsell_0.5.0     broom_1.0.5       compiler_4.2.3    xfun_0.40        
-## [21] pkgconfig_2.0.3   askpass_1.2.0     systemfonts_1.0.5 htmltools_0.5.6.1
-## [25] openssl_2.1.1     tidyselect_1.2.0  fansi_1.0.5       tzdb_0.4.0       
-## [29] withr_2.5.1       grid_4.2.3        jsonlite_1.8.7    gtable_0.3.4     
-## [33] lifecycle_1.0.3   magrittr_2.0.3    scales_1.2.1      zip_2.3.0        
-## [37] carData_3.0-5     cli_3.6.1         stringi_1.7.12    cachem_1.0.8     
-## [41] ggsignif_0.6.4    xml2_1.3.5        bslib_0.5.1       ragg_1.2.6       
-## [45] generics_0.1.3    vctrs_0.6.4       tools_4.2.3       glue_1.6.2       
-## [49] hms_1.1.3         abind_1.4-5       fastmap_1.1.1     yaml_2.3.7       
-## [53] timechange_0.2.0  colorspace_2.1-0  rstatix_0.7.2     knitr_1.44       
-## [57] sass_0.4.7</code></pre>
+##  [1] gtable_0.3.4      xfun_0.43         bslib_0.6.2       rstatix_0.7.2    
+##  [5] lattice_0.22-6    tzdb_0.4.0        vctrs_0.6.5       tools_4.3.3      
+##  [9] generics_0.1.3    fansi_1.0.6       pkgconfig_2.0.3   Matrix_1.6-5     
+## [13] uuid_1.2-0        lifecycle_1.0.4   compiler_4.3.3    textshaping_0.3.7
+## [17] munsell_0.5.0     carData_3.0-5     htmltools_0.5.8   sass_0.4.9       
+## [21] yaml_2.3.8        pillar_1.9.0      car_3.1-2         jquerylib_0.1.4  
+## [25] openssl_2.1.1     cachem_1.0.8      abind_1.4-5       tidyselect_1.2.0 
+## [29] zip_2.3.1         digest_0.6.35     stringi_1.8.3     fastmap_1.1.1    
+## [33] grid_4.3.3        colorspace_2.1-0  cli_3.6.2         magrittr_2.0.3   
+## [37] utf8_1.2.4        broom_1.0.5       withr_3.0.0       scales_1.3.0     
+## [41] backports_1.4.1   timechange_0.3.0  rmarkdown_2.26    ggsignif_0.6.4   
+## [45] askpass_1.2.0     ragg_1.3.0        hms_1.1.3         evaluate_0.23    
+## [49] knitr_1.45        rlang_1.1.3       Rcpp_1.0.12       glue_1.7.0       
+## [53] xml2_1.3.6        rstudioapi_0.16.0 jsonlite_1.8.8    R6_2.5.1         
+## [57] systemfonts_1.0.5</code></pre>
 </div>
 
 
